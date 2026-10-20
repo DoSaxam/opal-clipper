@@ -1,0 +1,328 @@
+import { spawn } from "child_process";
+import fs from "fs";
+import path from "path";
+import { clipDir, MEDIA_PROXY_PORT } from "./paths";
+import type { FormatCacheEntry, StreamFormat } from "./ytdlp";
+import { refreshFormats } from "./ytdlp";
+
+/**
+ * Clip cutting engine.
+ *
+ * Frame-accurate technique:
+ *   ffmpeg -ss START -to END -copyts -i <videoStream> -ss START -to END -copyts -i <audioStream>
+ *   (input seek jumps to the keyframe before START, decodes & discards up to START exactly,
+ *    -copyts keeps absolute timestamps so -to END lands precisely)
+ *
+ * Streams are fed through the local range-proxy so ffmpeg's HTTP client works
+ * through the WARP tunnel and only fetches the bytes needed for the clip.
+ */
+
+export interface CutOptions {
+  videoId: string;
+  sourceUrl: string;
+  start: number;
+  end: number;
+  outPath: string;
+  height?: number | null; // target height; null = source height
+  crf?: number;
+  onProgress?: (pct: number) => void;
+  signal?: { aborted: boolean };
+}
+
+function proxyUrl(remote: string, viaTunnel: boolean): string {
+  const route = viaTunnel ? "gost" : "direct";
+  return `http://127.0.0.1:${MEDIA_PROXY_PORT}/?r=${route}&u=${encodeURIComponent(remote)}`;
+}
+
+/** Pick best video format for a target height. Preference: avc1(h264) > vp9 > av1, https protocol. */
+export function pickVideoFormat(entry: FormatCacheEntry, targetHeight: number | null): StreamFormat | null {
+  const pool = entry.video.filter((f) => f.protocol === "https");
+  if (!pool.length) return null;
+  const codecRank = (v: string) => (/avc1|h264/i.test(v) ? 0 : /vp9/i.test(v) ? 1 : /av01/i.test(v) ? 2 : 3);
+  const sorted = [...pool].sort((a, b) => {
+    const ah = a.height || 0;
+    const bh = b.height || 0;
+    if (targetHeight != null) {
+      // prefer largest height <= target; then smallest overshoot
+      const aOk = ah <= targetHeight ? 0 : 1;
+      const bOk = bh <= targetHeight ? 0 : 1;
+      if (aOk !== bOk) return aOk - bOk;
+      if (aOk === 0 && ah !== bh) return bh - ah; // bigger (closer to target) first
+      if (aOk === 1 && ah !== bh) return ah - bh; // smallest overshoot first
+    } else if (ah !== bh) {
+      return bh - ah; // best quality
+    }
+    return codecRank(a.vcodec) - codecRank(b.vcodec);
+  });
+  return sorted[0] || null;
+}
+
+/**
+ * Timeout multiplier by resolution — 4K VP9 decode + x264 encode on small CPUs
+ * runs far below realtime, and the WARP tunnel download adds more. Scale generously.
+ */
+function cutTimeoutMs(durSec: number, workHeight: number): number {
+  const mult = workHeight >= 2160 ? 45 : workHeight >= 1440 ? 30 : workHeight >= 1080 ? 15 : 10;
+  const minMs = workHeight >= 2160 ? 420000 : workHeight >= 1440 ? 300000 : workHeight >= 1080 ? 180000 : 150000;
+  return Math.max(minMs, durSec * 1000 * mult);
+}
+
+export function pickAudioFormat(entry: FormatCacheEntry): StreamFormat | null {
+  const pool = entry.audio.filter((f) => f.protocol === "https");
+  const sorted = [...pool].sort((a, b) => (b.abr || 0) - (a.abr || 0));
+  return (
+    sorted.find((f) => f.ext === "m4a" || /mp4a/i.test(f.acodec)) ||
+    sorted[0] ||
+    null
+  );
+}
+
+function ffmpeg(
+  args: string[],
+  opts: {
+    totalSec: number;
+    onProgress?: (pct: number) => void;
+    timeoutMs: number;
+    signal?: { aborted: boolean };
+  }
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const proc = spawn("ffmpeg", ["-hide_banner", "-nostdin", "-y", ...args], {
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stderrTail = "";
+    let killed = false;
+
+    const timer = setTimeout(() => {
+      killed = true;
+      proc.kill("SIGKILL");
+      reject(new Error("Timed out while cutting this clip."));
+    }, opts.timeoutMs);
+
+    const abortTimer = opts.signal
+      ? setInterval(() => {
+          if (opts.signal!.aborted && !killed) {
+            killed = true;
+            proc.kill("SIGKILL");
+          }
+        }, 500)
+      : null;
+
+    let buf = "";
+    proc.stdout.on("data", (d: Buffer) => {
+      buf += d.toString();
+      const lines = buf.split("\n");
+      buf = lines.pop() || "";
+      for (const line of lines) {
+        const m = line.match(/^out_time_ms=(\d+)/);
+        if (m && opts.onProgress) {
+          const sec = Number(m[1]) / 1e6;
+          const pct = Math.max(0, Math.min(99, (sec / opts.totalSec) * 100));
+          opts.onProgress(pct);
+        }
+      }
+    });
+
+    const errChunks: Buffer[] = [];
+    proc.stderr.on("data", (d: Buffer) => {
+      errChunks.push(d);
+      if (errChunks.length > 60) errChunks.shift();
+    });
+
+    proc.on("error", (e) => {
+      clearTimeout(timer);
+      if (abortTimer) clearInterval(abortTimer);
+      reject(e);
+    });
+
+    proc.on("close", (code) => {
+      clearTimeout(timer);
+      if (abortTimer) clearInterval(abortTimer);
+      stderrTail = Buffer.concat(errChunks).toString();
+      if (killed) {
+        reject(new Error("Cut was cancelled."));
+      } else if (code === 0) {
+        opts.onProgress?.(100);
+        resolve();
+      } else {
+        const httpErr = stderrTail.match(/Server returned (\d+) .*/)?.[0];
+        reject(new Error(httpErr || stderrTail.split("\n").filter(Boolean).slice(-2).join(" ").slice(0, 220) || `ffmpeg exited (${code})`));
+      }
+    });
+  });
+}
+
+export async function probeDuration(file: string): Promise<number> {
+  return new Promise((resolve) => {
+    const p = spawn("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", file]);
+    let out = "";
+    p.stdout.on("data", (d) => (out += d));
+    p.on("close", () => {
+      const n = parseFloat(out.trim());
+      resolve(Number.isFinite(n) ? n : 0);
+    });
+    p.on("error", () => resolve(0));
+  });
+}
+
+/** x264 preset by target height — 4K/2K need a faster preset on small CPUs. */
+function presetFor(targetHeight: number | null): string {
+  if (targetHeight == null) return "veryfast"; // source-height render of a small video
+  if (targetHeight >= 1440) return "superfast";
+  return "veryfast";
+}
+
+function buildCutArgs(
+  videoUrl: string | null,
+  audioUrl: string | null,
+  combinedUrl: string | null,
+  start: number,
+  end: number,
+  outPath: string,
+  opts: { targetHeight: number | null; srcHeight: number | null; crf: number; audioOnly?: boolean }
+): string[] {
+  const args: string[] = ["-progress", "pipe:1", "-nostats"];
+  // NOTE: never combine output `-t` with `-copyts` — with copyts, -t is applied on the
+  // ABSOLUTE timeline (first pts ≈ start), which would discard the whole clip.
+  // Input-side -ss/-to already bound every stream precisely.
+
+  if (opts.audioOnly && audioUrl) {
+    args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", audioUrl);
+    args.push("-vn", "-c:a", "libmp3lame", "-q:a", "0");
+    args.push("-metadata", "title=Opal Clip", "-id3v2_version", "3");
+    args.push(outPath);
+    return args;
+  }
+
+  if (combinedUrl) {
+    args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", combinedUrl);
+    args.push("-map", "0:v:0", "-map", "0:a:0?");
+  } else {
+    if (videoUrl) args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", videoUrl);
+    if (audioUrl) args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", audioUrl);
+    args.push("-map", "0:v:0");
+    args.push("-map", "1:a:0?");
+  }
+
+  args.push("-c:v", "libx264", "-crf", String(opts.crf), "-preset", presetFor(opts.targetHeight), "-pix_fmt", "yuv420p");
+  if (opts.targetHeight && opts.srcHeight && opts.srcHeight > opts.targetHeight) {
+    args.push("-vf", `scale=-2:${opts.targetHeight}`);
+  }
+  args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000");
+  args.push("-movflags", "+faststart");
+  args.push(outPath);
+  return args;
+}
+
+/** Cut a clip. Retries once with fresh stream URLs if they went stale (403). */
+export async function cutClip(
+  entry: FormatCacheEntry,
+  opts: CutOptions,
+  getFresh: () => Promise<FormatCacheEntry>
+): Promise<void> {
+  const attempt = async (e: FormatCacheEntry) => {
+    const { start, end, height } = opts;
+    const video = pickVideoFormat(e, height ?? null);
+    const audio = pickAudioFormat(e);
+    const combined = e.combined.find((f) => f.protocol === "https") ?? null;
+
+    if (!video && !combined) {
+      // no direct-URL video format (HLS-only source) — cannot range-proxy
+      throw new Error("This source only provides HLS streams which can't be cut precisely here.");
+    }
+
+    fs.mkdirSync(path.dirname(opts.outPath), { recursive: true });
+    const dur = end - start;
+    const args = buildCutArgs(
+      video ? proxyUrl(video.url, e.viaTunnel) : null,
+      audio ? proxyUrl(audio.url, e.viaTunnel) : null,
+      video ? null : combined ? proxyUrl(combined.url, e.viaTunnel) : null,
+      start,
+      end,
+      opts.outPath,
+      {
+        targetHeight: height ?? null,
+        srcHeight: (combined && !video ? combined.height : video?.height) ?? null,
+        crf: opts.crf ?? 18,
+      }
+    );
+
+    // Work height = max(source decode height, output height) — drives the timeout.
+    const srcH = (combined && !video ? combined.height : video?.height) ?? 0;
+    const workHeight = Math.max(srcH, height ?? 0);
+    const timeout = cutTimeoutMs(dur, workHeight);
+    await ffmpeg(args, { totalSec: dur, onProgress: opts.onProgress, timeoutMs: timeout, signal: opts.signal });
+
+    const outDur = await probeDuration(opts.outPath);
+    if (outDur <= 0.2 * dur) {
+      throw new Error("Output clip looks empty — stream may have moved.");
+    }
+  };
+
+  try {
+    await attempt(entry);
+  } catch (err) {
+    const msg = (err as Error).message || "";
+    if (/403|401|expired|gone|empty|moved/i.test(msg)) {
+      const fresh = await getFresh(); // refreshFormats()
+      await attempt(fresh);
+    } else {
+      throw err;
+    }
+  }
+}
+
+/** Extract a poster frame at clip start (from local preview file — instant). */
+export async function makePoster(previewPath: string, posterPath: string): Promise<boolean> {
+  try {
+    await ffmpeg(
+      ["-y", "-ss", "0.4", "-i", previewPath, "-frames:v", "1", "-q:v", "4", posterPath],
+      { totalSec: 1, timeoutMs: 20000 }
+    );
+    return fs.existsSync(posterPath);
+  } catch {
+    return false;
+  }
+}
+
+/** Render MP3 (audio-only) directly from the source audio stream. */
+export async function renderMp3(
+  entry: FormatCacheEntry,
+  opts: CutOptions,
+  getFresh: () => Promise<FormatCacheEntry>
+): Promise<void> {
+  const attempt = async (e: FormatCacheEntry) => {
+    const audio = pickAudioFormat(e);
+    if (!audio) throw new Error("No audio stream found for this video.");
+    fs.mkdirSync(path.dirname(opts.outPath), { recursive: true });
+    const dur = opts.end - opts.start;
+    const args = buildCutArgs(
+      null,
+      proxyUrl(audio.url, e.viaTunnel),
+      null,
+      opts.start,
+      opts.end,
+      opts.outPath,
+      { targetHeight: null, srcHeight: null, crf: 18, audioOnly: true }
+    );
+    await ffmpeg(args, {
+      totalSec: dur,
+      onProgress: opts.onProgress,
+      timeoutMs: Math.max(90000, dur * 1000 * 5),
+      signal: opts.signal,
+    });
+  };
+  try {
+    await attempt(entry);
+  } catch (err) {
+    const msg = (err as Error).message || "";
+    if (/403|401|expired|gone/i.test(msg)) {
+      await attempt(await getFresh());
+    } else throw err;
+  }
+}
+
+export function clipFilePath(clipId: string, quality: string): string {
+  const ext = quality === "mp3" ? "mp3" : "mp4";
+  return path.join(clipDir(clipId), `q_${quality}.${ext}`);
+}
