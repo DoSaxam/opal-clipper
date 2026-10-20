@@ -1,8 +1,17 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { Play, Pause, Download, Trash2, Loader2, CircleCheck, TriangleAlert, Check, ChevronDown, FileAudio } from "lucide-react";
+import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
+import {
+  Play,
+  Download,
+  Trash2,
+  Loader2,
+  CircleCheck,
+  TriangleAlert,
+  Check,
+  ChevronDown,
+} from "lucide-react";
 import { TapButton } from "./TapButton";
 import { useOpal } from "@/lib/clipper/store";
 import { fmtClock, type Clip, type RenderJob, type VideoInfo } from "@/lib/clipper/types";
@@ -22,6 +31,25 @@ export function ClipCard({
   const [progress, setProgress] = useState(0);
   const [curTime, setCurTime] = useState(0);
   const [confirmDel, setConfirmDel] = useState(false);
+
+  // ---- premium 3D tilt (fine pointers only) ----
+  const cardRef = useRef<HTMLDivElement>(null);
+  const rx = useMotionValue(0);
+  const ry = useMotionValue(0);
+  const srx = useSpring(rx, { stiffness: 200, damping: 22, mass: 0.6 });
+  const sry = useSpring(ry, { stiffness: 200, damping: 22, mass: 0.6 });
+  const onTilt = (e: React.PointerEvent) => {
+    if (e.pointerType === "touch" || !cardRef.current) return;
+    const r = cardRef.current.getBoundingClientRect();
+    const nx = ((e.clientX - r.left) / r.width) * 2 - 1;
+    const ny = ((e.clientY - r.top) / r.height) * 2 - 1;
+    ry.set(nx * 5);
+    rx.set(-ny * 5);
+  };
+  const untilt = () => {
+    rx.set(0);
+    ry.set(0);
+  };
 
   // newest render for this clip (any status)
   const myRenders = renders.filter((r) => r.clipId === clip.id).sort((a, b) => b.createdAt - a.createdAt);
@@ -59,243 +87,235 @@ export function ClipCard({
   const dur = clip.end - clip.start;
 
   return (
-    <motion.div
-      layout
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      transition={{ type: "spring", stiffness: 240, damping: 26 }}
-      className="rounded-[24px] overflow-hidden"
-      style={{
-        background: "linear-gradient(160deg, rgba(21,26,33,0.95), rgba(21,26,33,0.82))",
-        border: `1px solid ${isSelected ? "rgba(129,230,217,0.55)" : "rgba(45,55,72,0.7)"}`,
-        boxShadow: isSelected ? "0 0 0 1px rgba(129,230,217,0.35), 0 14px 40px rgba(0,0,0,0.5)" : "0 14px 40px rgba(0,0,0,0.42)",
-      }}
-    >
-      {/* ===== preview area ===== */}
-      <div
-        className="relative aspect-video cursor-pointer"
-        onClick={() => {
-          if (selectMode) toggleSelect(clip.id);
-          else if (clip.status === "ready") togglePlay();
+    <div ref={cardRef} className="perspective-[1100px]" onPointerMove={onTilt} onPointerLeave={untilt}>
+      <motion.div
+        layout
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        transition={{ type: "spring", stiffness: 240, damping: 26 }}
+        whileHover={{ y: -3 }}
+        style={{
+          rotateX: srx,
+          rotateY: sry,
+          transformStyle: "preserve-3d",
+          background: "#0F1011",
+          borderRadius: 12,
+          boxShadow: isSelected
+            ? "rgba(228,242,34,0.5) 0 0 0 1px inset, rgba(0,0,0,0.5) 0 8px 32px"
+            : "#23252A 0 0 0 1px inset, rgba(0,0,0,0.35) 0 4px 20px",
         }}
+        className="overflow-hidden"
       >
-        {clip.status === "ready" && clip.hasPreview ? (
-          <>
-            <video
-              ref={videoRef}
-              poster={clip.hasPoster ? `/api/clip/${clip.id}/poster` : undefined}
-              src={`/api/clip/${clip.id}/preview`}
-              playsInline
-              preload="metadata"
-              className="w-full h-full object-cover"
-              onTimeUpdate={(e) => {
-                const v = e.currentTarget;
-                setProgress(v.duration ? (v.currentTime / v.duration) * 100 : 0);
-                setCurTime(v.currentTime);
-              }}
-              onEnded={() => {
-                setPlaying(false);
-                setProgress(0);
-              }}
-            />
-            {/* center play/pause */}
-            <AnimatePresence>
-              <motion.div
-                key={playing ? "pause" : "play"}
-                initial={{ opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0 }}
-                className="absolute inset-0 grid place-items-center pointer-events-none"
-              >
-                <div
-                  className="w-14 h-14 rounded-full grid place-items-center"
-                  style={{
-                    background: "rgba(10,11,13,0.55)",
-                    backdropFilter: "blur(12px)",
-                    border: "1px solid rgba(255,255,255,0.16)",
-                    opacity: playing ? 0 : 1,
-                    transition: "opacity .3s",
-                  }}
+        {/* ===== preview area ===== */}
+        <div
+          className="relative aspect-video cursor-pointer"
+          onClick={() => {
+            if (selectMode) toggleSelect(clip.id);
+            else if (clip.status === "ready") togglePlay();
+          }}
+        >
+          {clip.status === "ready" && clip.hasPreview ? (
+            <>
+              <video
+                ref={videoRef}
+                poster={clip.hasPoster ? `/api/clip/${clip.id}/poster` : undefined}
+                src={`/api/clip/${clip.id}/preview`}
+                playsInline
+                preload="metadata"
+                className="w-full h-full object-cover"
+                onTimeUpdate={(e) => {
+                  const v = e.currentTarget;
+                  setProgress(v.duration ? (v.currentTime / v.duration) * 100 : 0);
+                  setCurTime(v.currentTime);
+                }}
+                onEnded={() => {
+                  setPlaying(false);
+                  setProgress(0);
+                }}
+              />
+              {/* center play — glass disc */}
+              <AnimatePresence>
+                <motion.div
+                  key={playing ? "pause" : "play"}
+                  initial={{ opacity: 0, scale: 0.7 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="absolute inset-0 grid place-items-center pointer-events-none"
                 >
-                  <Play size={22} className="text-white ml-0.5" fill="white" />
-                </div>
-              </motion.div>
-            </AnimatePresence>
-            {/* bottom bar */}
-            <div className="absolute bottom-0 inset-x-0 px-3.5 pb-2.5 pt-8" style={{ background: "linear-gradient(to top, rgba(5,6,8,0.82), transparent)" }}>
-              <div className="flex items-center gap-2">
-                <span className="text-[10px] font-semibold text-white/85 tabular-nums">{fmtClock(curTime)}</span>
-                <div className="flex-1 h-[3.5px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.16)" }}>
                   <div
-                    className="h-full rounded-full"
+                    className="w-[52px] h-[52px] rounded-full grid place-items-center"
                     style={{
-                      width: `${progress}%`,
-                      background: "linear-gradient(90deg, #4FD1C5, #63B3ED)",
-                      boxShadow: "0 0 8px rgba(129,230,217,0.6)",
+                      background: "rgba(8,9,10,0.55)",
+                      backdropFilter: "blur(12px)",
+                      boxShadow: "rgba(255,255,255,0.14) 0 0 0 1px inset",
+                      opacity: playing ? 0 : 1,
+                      transition: "opacity .3s",
                     }}
-                  />
-                </div>
-                <span className="text-[10px] font-semibold text-white/60 tabular-nums">{fmtClock(dur)}</span>
-              </div>
-            </div>
-          </>
-        ) : clip.status === "error" ? (
-          <div className="w-full h-full grid place-items-center" style={{ background: "rgba(252,129,129,0.05)" }}>
-            <div className="flex flex-col items-center gap-2 px-6 text-center">
-              <TriangleAlert size={22} className="text-[#FC8181]" />
-              <p className="text-[11.5px] text-[#FC8181] leading-snug line-clamp-2">{clip.error}</p>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full h-full grid place-items-center opal-shimmer" style={{ background: "#131820" }}>
-            <div className="flex flex-col items-center gap-2.5">
+                  >
+                    <Play size={20} className="text-paper ml-0.5" fill="white" />
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+              {/* bottom bar — acid progress */}
               <div
-                className="w-11 h-11 rounded-full grid place-items-center"
-                style={{ background: "rgba(129,230,217,0.1)", border: "1px solid rgba(129,230,217,0.25)" }}
+                className="absolute bottom-0 inset-x-0 px-3.5 pb-2.5 pt-8"
+                style={{ background: "linear-gradient(to top, rgba(8,9,10,0.85), transparent)" }}
               >
-                <Loader2 size={18} className="animate-spin text-[#81E6D9]" />
+                <div className="flex items-center gap-2">
+                  <span className="mono-meta text-[10px] text-mist">{fmtClock(curTime)}</span>
+                  <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.14)" }}>
+                    <div
+                      className="h-full rounded-full"
+                      style={{ width: `${progress}%`, background: "#E4F222" }}
+                    />
+                  </div>
+                  <span className="mono-meta text-[10px] text-ash">{fmtClock(dur)}</span>
+                </div>
               </div>
-              <span className="text-[11px] font-semibold text-[#81E6D9]">{clip.stage}… {clip.progress}%</span>
+            </>
+          ) : clip.status === "error" ? (
+            <div className="w-full h-full grid place-items-center" style={{ background: "rgba(235,87,87,0.04)" }}>
+              <div className="flex flex-col items-center gap-2 px-6 text-center">
+                <TriangleAlert size={20} className="text-coral" />
+                <p className="text-[11.5px] text-coral leading-snug line-clamp-2">{clip.error}</p>
+              </div>
             </div>
-          </div>
-        )}
-
-        {/* range badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-1.5">
-          <span
-            className="text-[10.5px] font-bold text-white px-2.5 py-1 rounded-full tabular-nums"
-            style={{
-              background: "rgba(10,11,13,0.72)",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.14)",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.35)",
-            }}
-          >
-            {fmtClock(clip.start)} – {fmtClock(clip.end)}
-          </span>
-        </div>
-
-        {/* select check */}
-        <AnimatePresence>
-          {selectMode && (
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0 }}
-              className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full grid place-items-center"
-              style={{
-                background: isSelected ? "#81E6D9" : "rgba(10,11,13,0.6)",
-                border: isSelected ? "none" : "1.5px solid rgba(255,255,255,0.35)",
-                backdropFilter: "blur(6px)",
-              }}
-            >
-              {isSelected && <Check size={15} strokeWidth={3.2} className="text-[#0A0B0D]" />}
-            </motion.div>
+          ) : (
+            <div className="w-full h-full grid place-items-center shimmer" style={{ background: "#0D0E10" }}>
+              <div className="flex flex-col items-center gap-2.5">
+                <div
+                  className="w-10 h-10 rounded-[8px] grid place-items-center"
+                  style={{ background: "rgba(228,242,34,0.07)", boxShadow: "rgba(228,242,34,0.2) 0 0 0 1px inset" }}
+                >
+                  <Loader2 size={16} className="animate-spin text-acid" />
+                </div>
+                <span className="mono-meta text-[10.5px] text-acid">{clip.stage.toUpperCase()} {clip.progress}%</span>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
-      </div>
 
-      {/* ===== meta + actions ===== */}
-      <div className="px-4 pt-3 pb-4">
-        <div className="flex items-center justify-between gap-2">
-          <p className="text-[12.5px] font-semibold text-[#E2E8F0] truncate flex-1">{video?.title || "Clip"}</p>
-          <span className="text-[10.5px] font-bold text-[#718096] tabular-nums shrink-0">{dur.toFixed(1)}s</span>
+          {/* range badge — mono glass */}
+          <div className="absolute top-2.5 left-2.5">
+            <span
+              className="mono-meta text-[10.5px] text-mist px-2.5 py-1 rounded-[4px]"
+              style={{
+                background: "rgba(8,9,10,0.72)",
+                backdropFilter: "blur(10px)",
+                boxShadow: "rgba(255,255,255,0.12) 0 0 0 1px inset",
+              }}
+            >
+              {fmtClock(clip.start)} – {fmtClock(clip.end)}
+            </span>
+          </div>
+
+          {/* select check — acid */}
+          <AnimatePresence>
+            {selectMode && (
+              <motion.div
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                className="absolute top-2.5 right-2.5 w-[26px] h-[26px] rounded-[6px] grid place-items-center"
+                style={{
+                  background: isSelected ? "#E4F222" : "rgba(8,9,10,0.6)",
+                  boxShadow: isSelected ? "none" : "rgba(255,255,255,0.3) 0 0 0 1.5px inset",
+                  backdropFilter: "blur(6px)",
+                }}
+              >
+                {isSelected && <Check size={14} strokeWidth={3.2} className="text-void" />}
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* cutting progress (if still cutting) */}
-        {(clip.status === "cutting" || clip.status === "queued") && (
-          <div className="mt-2.5 h-[4px] rounded-full overflow-hidden" style={{ background: "#1A202C" }}>
-            <motion.div
-              className="h-full rounded-full"
-              style={{ background: "linear-gradient(90deg, #4FD1C5, #63B3ED)" }}
-              animate={{ width: `${clip.progress}%` }}
-              transition={{ type: "spring", stiffness: 60, damping: 18 }}
-            />
+        {/* ===== meta + actions ===== */}
+        <div className="px-4 pt-3 pb-4">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[12.5px] text-mist truncate flex-1">{video?.title || "Clip"}</p>
+            <span className="mono-meta text-[10.5px] text-ash shrink-0">{dur.toFixed(1)}s</span>
           </div>
-        )}
 
-        {clip.status === "ready" && (
-          <div className="mt-3 flex items-center gap-2">
-            {/* quality pill */}
-            <TapButton
-              onClick={() => onQuality(clip)}
-              className="h-9 px-3 rounded-full flex items-center gap-1.5 text-[12.5px] font-semibold"
-              style={{
-                background: "linear-gradient(160deg, rgba(38,46,59,0.9), rgba(30,36,46,0.9))",
-                color: "#E2E8F0",
-                border: "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 4px 12px rgba(0,0,0,0.3)",
-              }}
-            >
-              {activeRender ? (
-                <>
-                  <Loader2 size={13} className="animate-spin text-[#81E6D9]" />
-                  {activeRender.quality === "mp3" ? "MP3" : `${activeRender.quality}p`} {Math.round(activeRender.progress)}%
-                </>
-              ) : readyRender ? (
-                <>
-                  <CircleCheck size={13} className="text-[#68D391]" />
-                  {readyRender.quality === "mp3" ? "MP3" : `${readyRender.quality}p`}
-                  <Download size={13} className="text-[#68D391]" />
-                </>
-              ) : (
-                <>
-                  <Download size={13} className="text-[#81E6D9]" />
-                  Quality
-                  <ChevronDown size={12} className="text-[#718096]" />
-                </>
-              )}
-            </TapButton>
+          {/* cutting progress */}
+          {(clip.status === "cutting" || clip.status === "queued") && (
+            <div className="mt-2.5 h-[3px] rounded-full overflow-hidden" style={{ background: "#161718" }}>
+              <motion.div
+                className="h-full rounded-full"
+                style={{ background: "#E4F222" }}
+                animate={{ width: `${clip.progress}%` }}
+                transition={{ type: "spring", stiffness: 60, damping: 18 }}
+              />
+            </div>
+          )}
 
-            <div className="flex-1" />
+          {clip.status === "ready" && (
+            <div className="mt-3 flex items-center gap-2">
+              {/* quality — ghost */}
+              <TapButton
+                onClick={() => onQuality(clip)}
+                className="btn-ghost h-[34px] px-3 flex items-center gap-1.5 text-[12.5px]"
+              >
+                {activeRender ? (
+                  <>
+                    <Loader2 size={12} className="animate-spin text-acid" />
+                    <span className="mono-meta text-acid">
+                      {activeRender.quality === "mp3" ? "MP3" : `${activeRender.quality}P`} {Math.round(activeRender.progress)}%
+                    </span>
+                  </>
+                ) : readyRender ? (
+                  <>
+                    <CircleCheck size={12} className="text-pulse" />
+                    <span className="mono-meta text-mist">
+                      {readyRender.quality === "mp3" ? "MP3" : `${readyRender.quality}P`}
+                    </span>
+                    <Download size={12} className="text-pulse" />
+                  </>
+                ) : (
+                  <>
+                    <Download size={12} className="text-acid" />
+                    Quality
+                    <ChevronDown size={11} className="text-ash" />
+                  </>
+                )}
+              </TapButton>
 
-            <TapButton
-              onClick={() => onQuality(clip)}
-              className="w-9 h-9 rounded-full grid place-items-center"
-              style={{
-                background: "linear-gradient(160deg, rgba(129,230,217,0.2), rgba(129,230,217,0.1))",
-                border: "1px solid rgba(129,230,217,0.32)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 4px 14px rgba(79,209,197,0.18)",
-              }}
-              aria-label="Download"
-            >
-              <Download size={15} className="text-[#81E6D9]" />
-            </TapButton>
+              <div className="flex-1" />
 
-            <TapButton
-              onClick={() => {
-                if (confirmDel) void deleteClips([clip.id]);
-                else setConfirmDel(true);
-              }}
-              onBlur={() => setConfirmDel(false)}
-              className="w-9 h-9 rounded-full grid place-items-center"
-              style={{
-                background: confirmDel
-                  ? "linear-gradient(160deg, rgba(252,129,129,0.24), rgba(252,129,129,0.12))"
-                  : "linear-gradient(160deg, rgba(38,46,59,0.9), rgba(30,36,46,0.9))",
-                border: confirmDel ? "1px solid rgba(252,129,129,0.45)" : "1px solid rgba(255,255,255,0.08)",
-                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05)",
-              }}
-              aria-label={confirmDel ? "Confirm delete" : "Delete"}
-            >
-              <Trash2 size={14} className={confirmDel ? "text-[#FC8181]" : "text-[#718096]"} />
-            </TapButton>
-          </div>
-        )}
+              <TapButton
+                onClick={() => onQuality(clip)}
+                className="btn-ghost w-[34px] h-[34px] grid place-items-center"
+                aria-label="Download"
+              >
+                <Download size={14} className="text-acid" />
+              </TapButton>
 
-        {clip.status === "error" && (
-          <div className="mt-2.5 flex items-center gap-2">
-            <TapButton
-              onClick={() => onQuality(clip)}
-              className="h-9 px-4 rounded-full text-[12.5px] font-semibold"
-              style={{ background: "#232a36", color: "#E2E8F0", border: "1px solid rgba(45,55,72,0.9)" }}
-            >
-              Retry via Quality
-            </TapButton>
-          </div>
-        )}
-      </div>
-    </motion.div>
+              <TapButton
+                onClick={() => {
+                  if (confirmDel) void deleteClips([clip.id]);
+                  else setConfirmDel(true);
+                }}
+                onBlur={() => setConfirmDel(false)}
+                className="w-[34px] h-[34px] rounded-[6px] grid place-items-center transition-colors"
+                style={{
+                  boxShadow: confirmDel ? "rgba(235,87,87,0.45) 0 0 0 1px inset" : "#23252A 0 0 0 1px inset",
+                  background: confirmDel ? "rgba(235,87,87,0.08)" : "transparent",
+                }}
+                aria-label={confirmDel ? "Confirm delete" : "Delete"}
+              >
+                <Trash2 size={13} className={confirmDel ? "text-coral" : "text-ash"} />
+              </TapButton>
+            </div>
+          )}
+
+          {clip.status === "error" && (
+            <div className="mt-2.5 flex items-center gap-2">
+              <TapButton onClick={() => onQuality(clip)} className="btn-ghost h-[34px] px-4 text-[12.5px]">
+                Retry via Quality
+              </TapButton>
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </div>
   );
 }

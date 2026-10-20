@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-/** iOS-style status bar (fake time like 9:41, signal/wifi/battery glyphs). Desktop-only. */
+/** iOS-style status bar (fake time, signal/wifi/battery glyphs). Desktop-only. */
 export function StatusBar() {
   const [time, setTime] = useState("");
 
@@ -21,14 +21,13 @@ export function StatusBar() {
 
   return (
     <div
-      className="opal-statusbar relative z-10 flex items-center justify-between px-8 pt-3 pb-1 text-[13px] font-semibold text-white/90 select-none"
+      className="opal-statusbar relative z-10 flex items-center justify-between px-8 pt-3 pb-1 text-[13px] font-medium text-mist select-none"
+      style={{ letterSpacing: "-0.01em" }}
       aria-hidden
     >
-      <span className="tabular-nums" style={{ letterSpacing: "-0.01em" }}>
-        {time}
-      </span>
+      <span className="tabular-nums">{time}</span>
       {/* dynamic island hint */}
-      <div className="w-24 h-[26px] rounded-full bg-black/90" />
+      <div className="w-24 h-[26px] rounded-full" style={{ background: "#050506" }} />
       <div className="flex items-center gap-1.5">
         {/* signal */}
         <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor">
@@ -45,10 +44,10 @@ export function StatusBar() {
         </svg>
         {/* battery */}
         <div className="flex items-center gap-0.5">
-          <div className="w-[22px] h-[11px] rounded-[3.5px] border border-white/45 p-[1.5px]">
-            <div className="w-[72%] h-full rounded-[2px] bg-white/90" />
+          <div className="w-[22px] h-[11px] rounded-[3.5px] border border-mist/45 p-[1.5px]">
+            <div className="w-[72%] h-full rounded-[2px] bg-acid" />
           </div>
-          <div className="w-[1.5px] h-[4px] rounded-r bg-white/45" />
+          <div className="w-[1.5px] h-[4px] rounded-r bg-mist/45" />
         </div>
       </div>
     </div>

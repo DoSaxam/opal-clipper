@@ -19,7 +19,6 @@ export interface QualitySheetProps {
 export function QualitySheet({ open, onClose, clip, bulkIds, onStarted }: QualitySheetProps) {
   const { videos, clips, startRender } = useOpal();
   const [busy, setBusy] = useState(false);
-  // single mode: the clip's video; bulk mode: video of the first selected clip
   const videoId = clip?.videoId ?? (bulkIds?.length ? clips.find((c) => c.id === bulkIds[0])?.videoId : undefined);
   const video = videos.find((v) => v.id === videoId);
 
@@ -51,54 +50,60 @@ export function QualitySheet({ open, onClose, clip, bulkIds, onStarted }: Qualit
   return (
     <Drawer.Root open={open} onOpenChange={(o) => !o && onClose()}>
       <Drawer.Portal>
-        <Drawer.Overlay className="fixed inset-0 z-40" style={{ background: "rgba(4,5,6,0.6)", backdropFilter: "blur(3px)" }} />
+        <Drawer.Overlay className="fixed inset-0 z-40" style={{ background: "rgba(4,5,6,0.65)", backdropFilter: "blur(3px)" }} />
         <Drawer.Content
-          className="fixed bottom-0 left-0 right-0 z-50 mx-auto rounded-t-[28px] outline-none"
+          className="fixed bottom-0 left-0 right-0 z-50 mx-auto rounded-t-[16px] outline-none"
           style={{
             maxWidth: 430,
-            background: "linear-gradient(175deg, #1A202C 0%, #131820 100%)",
-            borderTop: "1px solid rgba(45,55,72,0.9)",
-            boxShadow: "0 -20px 60px rgba(0,0,0,0.6)",
+            background: "#111213",
+            boxShadow: "#383B3F 0 1px 0 0 inset, rgba(0,0,0,0.6) 0 -20px 60px",
           }}
         >
-          <div className="mx-auto mt-2.5 w-10 h-1 rounded-full bg-white/20" />
-          <div className="px-6 pt-4 pb-8">
-            <div className="flex items-center gap-2.5">
-              <div className="w-9 h-9 rounded-xl grid place-items-center" style={{ background: "rgba(129,230,217,0.12)", border: "1px solid rgba(129,230,217,0.25)" }}>
-                <Gauge size={16} className="text-[#81E6D9]" />
+          <div className="mx-auto mt-2.5 w-10 h-1 rounded-full bg-smoke/50" />
+          <div className="px-5 pt-4 pb-8">
+            <div className="flex items-center gap-3">
+              <div
+                className="w-9 h-9 rounded-[8px] grid place-items-center"
+                style={{ background: "rgba(228,242,34,0.08)", boxShadow: "rgba(228,242,34,0.22) 0 0 0 1px inset" }}
+              >
+                <Gauge size={15} className="text-acid" />
               </div>
               <div>
-                <Drawer.Title className="text-[17px] font-bold text-white">Choose quality</Drawer.Title>
-                <Drawer.Description className="text-[12px] text-[#A0AEC0]">
-                  {count > 1 ? `${count} clips — rendered one-by-one, then a single ZIP` : "Frame-accurate render, best available source"}
+                <Drawer.Title className="text-[16px] text-paper" style={{ fontWeight: 510, letterSpacing: "-0.012em" }}>
+                  Choose quality
+                </Drawer.Title>
+                <Drawer.Description className="mono-meta text-[10.5px] text-ash mt-0.5">
+                  {count > 1 ? `${count} CLIPS — ONE ZIP` : "FRAME-ACCURATE · BEST SOURCE"}
                 </Drawer.Description>
               </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-2">
+            <div className="mt-5 flex flex-col gap-1.5">
               {options.map((o, i) => (
                 <motion.div key={o.value} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}>
                   <TapButton
                     onClick={() => void onPick(o.value)}
                     disabled={busy}
-                    className="w-full flex items-center gap-3 rounded-2xl px-4 py-3.5"
+                    className="w-full flex items-center gap-3 rounded-[8px] px-4 py-3.5 transition-colors text-left"
                     style={{
-                      background: o.value === "mp3" ? "rgba(246,224,94,0.06)" : "rgba(10,11,13,0.5)",
-                      border: o.value === "mp3" ? "1px solid rgba(246,224,94,0.2)" : "1px solid rgba(45,55,72,0.8)",
+                      background: "rgba(255,255,255,0.02)",
+                      boxShadow: "#23252A 0 0 0 1px inset",
                     }}
                   >
                     {o.value === "mp3" ? (
-                      <FileAudio size={17} className="text-[#F6E05E]" />
+                      <FileAudio size={16} className="text-fog shrink-0" />
                     ) : (
-                      <Download size={16} className="text-[#81E6D9]" />
+                      <Download size={15} className="text-acid shrink-0" />
                     )}
-                    <span className="text-[15px] font-bold text-white">{o.label}</span>
-                    <span className="text-[11.5px] text-[#718096] font-medium">{o.sub}</span>
+                    <div className="min-w-0">
+                      <div className="mono-meta text-[14px] text-paper">{o.label}</div>
+                      <div className="text-[10.5px] text-ash">{o.sub}</div>
+                    </div>
                     <span className="flex-1" />
                     {busy ? (
-                      <Loader2 size={16} className="animate-spin text-[#81E6D9]" />
+                      <Loader2 size={15} className="animate-spin text-acid" />
                     ) : (
-                      <span className="text-[12px] font-semibold text-[#81E6D9]">
+                      <span className="text-[12px] text-acid" style={{ fontWeight: 510 }}>
                         {count > 1 ? `Render ${count}` : "Render"}
                       </span>
                     )}
@@ -107,8 +112,8 @@ export function QualitySheet({ open, onClose, clip, bulkIds, onStarted }: Qualit
               ))}
             </div>
 
-            <p className="mt-4 text-center text-[11px] text-[#5A6478] leading-relaxed px-4">
-              Preview 720p pe hota hai; download aapke chune hue quality me crisp {bestLabel} tak render hota hai.
+            <p className="mt-4 text-center mono-meta text-[10px] text-ash leading-relaxed px-4">
+              PREVIEW 720P · DOWNLOAD CRISP {bestLabel.toUpperCase()} TAK RENDER HOTA HAI
             </p>
           </div>
         </Drawer.Content>

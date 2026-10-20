@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0A0B0D",
+  themeColor: "#08090A",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -33,7 +33,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="antialiased" style={{ background: "#050608" }}>
+      <head>
+        {/* Inter Variable — primary UI typeface (Linear identity) */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500&display=swap"
+          rel="stylesheet"
+        />
+      </head>
+      <body className="antialiased" style={{ background: "#08090A" }}>
         {children}
         <Toaster />
       </body>

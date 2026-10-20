@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { CheckSquare, Square, X, Package, ChevronDown, ChevronUp, Download } from "lucide-react";
 import { ClipCard } from "./ClipCard";
 import { QualitySheet } from "./QualitySheet";
-import { GemHero } from "./GemHero";
+import { PrismHero } from "./PrismHero";
 import { TapButton } from "./TapButton";
 import { useOpal } from "@/lib/clipper/store";
 import type { Clip } from "@/lib/clipper/types";
@@ -26,7 +26,6 @@ export function ClipsScreen() {
       arr.push(c);
       m.set(c.videoId, arr);
     }
-    // newest video first (by newest clip in group)
     return [...m.entries()].sort((a, b) => Math.max(...b[1].map((c) => c.createdAt)) - Math.max(...a[1].map((c) => c.createdAt)));
   }, [clips]);
 
@@ -72,26 +71,27 @@ export function ClipsScreen() {
   return (
     <div className="relative pb-24">
       {/* header */}
-      <div className="flex items-center justify-between px-6 pt-4 pb-3 sticky top-0 z-10" style={{ background: "linear-gradient(to bottom, #0A0B0D 60%, transparent)" }}>
+      <div
+        className="flex items-center justify-between px-6 pt-4 pb-3 sticky top-0 z-10"
+        style={{ background: "linear-gradient(to bottom, #08090A 60%, transparent)" }}
+      >
         <div>
-          <h1 className="text-[28px] font-bold text-white tracking-tight" style={{ letterSpacing: "-0.03em" }}>
-            My Clips
-          </h1>
-          <p className="text-[12.5px] text-[#A0AEC0] mt-0.5">
-            {clips.length ? `${clips.length} clip${clips.length > 1 ? "s" : ""} · tap play to preview` : "your cut clips live here"}
+          <h1 className="text-[26px] text-paper type-heading">My Clips</h1>
+          <p className="mono-meta text-[10.5px] text-ash mt-1">
+            {clips.length ? `${clips.length} CLIPS · TAP PLAY TO PREVIEW` : "YOUR CUT CLIPS LIVE HERE"}
           </p>
         </div>
         {clips.length > 0 && (
           <TapButton
             onClick={() => setSelectMode(!selectMode)}
-            className="h-9 px-3.5 rounded-full flex items-center gap-1.5 text-[12.5px] font-semibold"
-            style={{
-              background: selectMode ? "rgba(129,230,217,0.14)" : "#232a36",
-              color: selectMode ? "#81E6D9" : "#A0AEC0",
-              border: selectMode ? "1px solid rgba(129,230,217,0.35)" : "1px solid rgba(45,55,72,0.9)",
-            }}
+            className="h-[32px] px-3.5 rounded-[6px] flex items-center gap-1.5 text-[12.5px] transition-colors"
+            style={
+              selectMode
+                ? { background: "rgba(228,242,34,0.1)", color: "#E4F222", boxShadow: "rgba(228,242,34,0.35) 0 0 0 1px inset" }
+                : { background: "transparent", color: "#8A8F98", boxShadow: "#23252A 0 0 0 1px inset" }
+            }
           >
-            {selectMode ? <CheckSquare size={14} /> : <Square size={14} />}
+            {selectMode ? <CheckSquare size={13} /> : <Square size={13} />}
             {selectMode ? "Done" : "Select"}
           </TapButton>
         )}
@@ -123,19 +123,18 @@ export function ClipsScreen() {
                 }
                 className="w-full flex items-center gap-3 mb-3 text-left"
               >
-                
                 <img
                   src={video?.thumbnail}
                   alt=""
-                  className="w-16 aspect-video rounded-lg object-cover"
-                  style={{ border: "1px solid rgba(45,55,72,0.8)" }}
+                  className="w-16 aspect-video rounded-[6px] object-cover"
+                  style={{ boxShadow: "#383B3F 0 0 0 1px inset" }}
                 />
                 <div className="flex-1 min-w-0">
-                  <p className="text-[13.5px] font-semibold text-[#E2E8F0] truncate">{video?.title || "Video"}</p>
-                  <p className="text-[11px] text-[#718096] mt-0.5">
-                    {groupClips.length} clip{groupClips.length > 1 ? "s" : ""}
+                  <p className="text-[13px] text-mist truncate">{video?.title || "Video"}</p>
+                  <p className="mono-meta text-[10px] text-ash mt-0.5">
+                    {groupClips.length} CLIP{groupClips.length > 1 ? "S" : ""}
                     {video?.heights?.[0]
-                      ? ` · up to ${video.heights[0] >= 2160 ? "4K " : video.heights[0] >= 1440 ? "2K " : ""}${video.heights[0]}p`
+                      ? ` · UP TO ${video.heights[0] >= 2160 ? "4K " : video.heights[0] >= 1440 ? "2K " : ""}${video.heights[0]}P`
                       : ""}
                   </p>
                 </div>
@@ -143,7 +142,6 @@ export function ClipsScreen() {
                   <span
                     onClick={(e) => {
                       e.stopPropagation();
-                      // select-all / deselect-all for this group
                       const cur = useOpal.getState().selected;
                       const next = new Set(cur);
                       if (allGroupSelected) groupClips.forEach((c) => next.delete(c.id));
@@ -152,10 +150,12 @@ export function ClipsScreen() {
                     }}
                     className="p-2"
                   >
-                    <CheckSquare size={17} className={allGroupSelected ? "text-[#81E6D9]" : "text-[#718096]"} />
+                    <CheckSquare size={16} className={allGroupSelected ? "text-acid" : "text-ash"} />
                   </span>
+                ) : isCollapsed ? (
+                  <ChevronDown size={15} className="text-ash" />
                 ) : (
-                  isCollapsed ? <ChevronDown size={16} className="text-[#718096]" /> : <ChevronUp size={16} className="text-[#718096]" />
+                  <ChevronUp size={15} className="text-ash" />
                 )}
               </TapButton>
 
@@ -174,21 +174,17 @@ export function ClipsScreen() {
 
         {/* empty state */}
         {clips.length === 0 && (
-          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center pt-8">
-            <GemHero size={140} mini />
-            <p className="text-[16px] font-semibold text-[#E2E8F0] mt-4">No clips yet</p>
-            <p className="text-[12.5px] text-[#718096] mt-1.5 text-center px-12 leading-relaxed">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col items-center pt-6">
+            <PrismHero size={86} />
+            <p className="text-[16px] text-paper mt-2" style={{ fontWeight: 510 }}>No clips yet</p>
+            <p className="text-[12.5px] text-ash mt-1.5 text-center px-12 leading-relaxed">
               Home pe link paste karo, timestamps do — clips yahan card mein aa jayengi.
             </p>
             <TapButton
               onClick={() => setTab("home")}
-              className="mt-5 h-11 px-6 rounded-full text-[14px] font-semibold flex items-center gap-2"
-              style={{
-                background: "linear-gradient(93deg, #4FD1C5 0%, #63B3ED 55%, #B794F4 120%)",
-                color: "#08110F",
-              }}
+              className="btn-acid acid-sweep mt-5 h-11 px-6 text-[14px] flex items-center gap-2"
             >
-              <Download size={15} /> Cut your first clip
+              <Download size={14} /> Cut your first clip
             </TapButton>
           </motion.div>
         )}
@@ -205,39 +201,36 @@ export function ClipsScreen() {
             className="absolute bottom-4 inset-x-4 z-20"
           >
             <div
-              className="rounded-[22px] p-3 flex items-center gap-3"
+              className="rounded-[12px] p-3 flex items-center gap-3"
               style={{
-                background: "rgba(26,32,44,0.92)",
+                background: "rgba(22,23,24,0.92)",
                 backdropFilter: "blur(24px)",
-                border: "1px solid rgba(129,230,217,0.3)",
-                boxShadow: "0 18px 50px rgba(0,0,0,0.6)",
+                boxShadow: "#383B3F 0 0 0 1px inset, rgba(0,0,0,0.5) 0 16px 48px",
               }}
             >
-              <TapButton onClick={clearSelection} className="w-8 h-8 rounded-full grid place-items-center bg-white/5">
-                <X size={14} className="text-[#A0AEC0]" />
+              <TapButton
+                onClick={clearSelection}
+                className="w-8 h-8 rounded-[6px] grid place-items-center"
+                style={{ background: "rgba(255,255,255,0.04)", boxShadow: "#23252A 0 0 0 1px inset" }}
+              >
+                <X size={13} className="text-fog" />
               </TapButton>
               <div className="flex-1">
-                <p className="text-[14px] font-bold text-white">
+                <p className="text-[14px] text-paper" style={{ fontWeight: 510 }}>
                   {selected.size} selected
                 </p>
                 {pendingZip ? (
-                  <p className="text-[11px] text-[#81E6D9] font-medium">rendering & zipping…</p>
+                  <p className="mono-meta text-[10.5px] text-acid">RENDERING & ZIPPING…</p>
                 ) : (
-                  <p className="text-[11px] text-[#A0AEC0]">bulk download as ZIP</p>
+                  <p className="text-[11px] text-fog">bulk download as ZIP</p>
                 )}
               </div>
               <TapButton
                 onClick={openBulk}
                 disabled={!allReadySelected || !!pendingZip}
-                className="h-11 px-5 rounded-full text-[13.5px] font-bold flex items-center gap-2"
-                style={{
-                  background: allReadySelected && !pendingZip
-                    ? "linear-gradient(93deg, #4FD1C5 0%, #63B3ED 60%, #B794F4 120%)"
-                    : "#232a36",
-                  color: allReadySelected && !pendingZip ? "#08110F" : "#5A6478",
-                }}
+                className="btn-acid acid-sweep h-[40px] px-5 text-[13px] flex items-center gap-2"
               >
-                <Package size={15} />
+                <Package size={14} />
                 Download {selected.size}
               </TapButton>
             </div>

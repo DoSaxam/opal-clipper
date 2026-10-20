@@ -1,52 +1,44 @@
 "use client";
 
-/** Cave ambience: deep vignette, drifting aurora glows, film grain. */
+/** Linear atmosphere: void base, faint acid wash, hairline grid, whisper grain. */
 export function BackgroundFX() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden>
-      {/* base */}
-      <div className="absolute inset-0" style={{ background: "#0A0B0D" }} />
-      {/* aurora glows */}
+      {/* base — void */}
+      <div className="absolute inset-0" style={{ background: "#08090A" }} />
+
+      {/* faint acid wash drifting near the top */}
       <div
-        className="absolute -top-24 left-1/2 -translate-x-1/2 animate-aurora"
+        className="absolute -top-28 left-1/2 -translate-x-1/2 animate-aurora"
         style={{
-          width: "130%",
-          height: "48%",
-          background:
-            "radial-gradient(ellipse at 50% 40%, rgba(79,209,197,0.10) 0%, rgba(99,179,237,0.05) 40%, transparent 70%)",
-          filter: "blur(30px)",
-        }}
-      />
-      <div
-        className="absolute -bottom-32 -left-24 animate-aurora"
-        style={{
-          width: "80%",
+          width: "120%",
           height: "42%",
-          background: "radial-gradient(ellipse, rgba(85,60,154,0.12) 0%, transparent 70%)",
-          filter: "blur(36px)",
-          animationDelay: "-6s",
+          background:
+            "radial-gradient(ellipse at 50% 40%, rgba(228,242,34,0.055) 0%, rgba(228,242,34,0.015) 42%, transparent 70%)",
+          filter: "blur(28px)",
         }}
       />
+
+      {/* hairline grid floor fading up from the bottom */}
       <div
-        className="absolute -bottom-24 -right-24 animate-aurora"
+        className="absolute inset-x-0 bottom-0 h-[52%] grid-floor"
         style={{
-          width: "70%",
-          height: "38%",
-          background: "radial-gradient(ellipse, rgba(79,209,197,0.07) 0%, transparent 70%)",
-          filter: "blur(32px)",
-          animationDelay: "-3s",
+          maskImage: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
+          WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.85), transparent)",
         }}
       />
-      {/* cave edges vignette */}
+
+      {/* vignette — grounds the instrument in darkness */}
       <div
         className="absolute inset-0"
         style={{
           background:
-            "radial-gradient(ellipse 92% 68% at 50% 38%, transparent 42%, rgba(6,7,9,0.62) 82%, rgba(4,5,6,0.9) 100%)",
+            "radial-gradient(ellipse 95% 70% at 50% 36%, transparent 40%, rgba(4,5,6,0.55) 80%, rgba(3,4,5,0.85) 100%)",
         }}
       />
-      {/* grain */}
-      <div className="absolute inset-0 opal-noise" />
+
+      {/* whisper grain */}
+      <div className="absolute inset-0 noise-quiet" />
     </div>
   );
 }

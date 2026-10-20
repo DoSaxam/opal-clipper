@@ -24,7 +24,7 @@ export function TabBar() {
     <nav
       className="relative z-20 px-5 pb-5 pt-2"
       style={{
-        background: "linear-gradient(to top, rgba(5,6,8,0.92) 20%, rgba(5,6,8,0.55) 70%, transparent)",
+        background: "linear-gradient(to top, rgba(8,9,10,0.94) 20%, rgba(8,9,10,0.6) 70%, transparent)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
       }}
@@ -37,40 +37,40 @@ export function TabBar() {
           return (
             <motion.button
               key={key}
-              whileTap={{ scale: 0.92 }}
+              whileTap={{ scale: 0.94 }}
               transition={{ type: "spring", stiffness: 500, damping: 26 }}
               onClick={() => setTab(key)}
-              className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-2xl"
+              className="relative flex flex-col items-center gap-1 px-4 py-1.5 rounded-[10px]"
               aria-current={active ? "page" : undefined}
             >
               {active && (
                 <motion.span
                   layoutId="tab-pill"
-                  className="absolute inset-0 rounded-2xl"
-                  style={{ background: "#2D3748" }}
+                  className="absolute inset-0 rounded-[10px]"
+                  style={{ background: "#23252A", boxShadow: "#383B3F 0 0 0 1px inset" }}
                   transition={{ type: "spring", stiffness: 420, damping: 32 }}
                 />
               )}
               <span className="relative">
                 <Icon
-                  size={21}
-                  strokeWidth={active ? 2.1 : 1.8}
-                  style={{ color: active ? "#FFFFFF" : "#718096" }}
+                  size={20}
+                  strokeWidth={active ? 2 : 1.7}
+                  style={{ color: active ? "#FFFFFF" : "#62666D" }}
                 />
                 {badge > 0 && (
                   <motion.span
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
-                    className="absolute -top-1.5 -right-2 min-w-[15px] h-[15px] px-1 rounded-full text-[9px] font-bold grid place-items-center"
-                    style={{ background: "#81E6D9", color: "#0A0B0D" }}
+                    className="absolute -top-1 -right-2 min-w-[15px] h-[15px] px-1 rounded-[4px] text-[9px] grid place-items-center mono-meta"
+                    style={{ background: "#E4F222", color: "#08090A", fontWeight: 500 }}
                   >
                     {badge > 9 ? "9+" : badge}
                   </motion.span>
                 )}
               </span>
               <span
-                className="relative text-[10.5px] font-semibold tracking-wide"
-                style={{ color: active ? "#FFFFFF" : "#718096" }}
+                className="relative text-[10.5px]"
+                style={{ color: active ? "#FFFFFF" : "#62666D", fontWeight: active ? 510 : 400, letterSpacing: active ? "-0.011em" : 0 }}
               >
                 {label}
               </span>
@@ -78,8 +78,8 @@ export function TabBar() {
           );
         })}
       </div>
-      {/* iOS home indicator */}
-      <div className="mx-auto mt-2.5 w-[120px] h-[5px] rounded-full bg-white/25" />
+      {/* home indicator */}
+      <div className="mx-auto mt-2.5 w-[120px] h-[5px] rounded-full bg-white/20" />
     </nav>
   );
 }

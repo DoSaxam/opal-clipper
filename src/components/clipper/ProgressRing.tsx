@@ -2,7 +2,7 @@
 
 import { motion, useSpring, useTransform } from "framer-motion";
 
-/** Iridescent progress ring with springy stroke. */
+/** Acid-lime progress ring with springy stroke. */
 export function ProgressRing({
   progress,
   size = 46,
@@ -21,26 +21,18 @@ export function ProgressRing({
   const spring = useSpring(0, { stiffness: 60, damping: 18 });
   const offset = useTransform(spring, (v) => c - (Math.max(0, Math.min(100, v)) / 100) * c);
 
-  // keep spring target in sync
   if (spring.get() !== progress) spring.set(progress);
 
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <defs>
-          <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#4FD1C5" />
-            <stop offset="50%" stopColor="#63B3ED" />
-            <stop offset="100%" stopColor="#B794F4" />
-          </linearGradient>
-        </defs>
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#2D3748" strokeWidth={stroke} opacity={0.55} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#23252A" strokeWidth={stroke} />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke="url(#ringGrad)"
+          stroke={active ? "#E4F222" : "#383B3F"}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
