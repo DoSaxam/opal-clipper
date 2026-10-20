@@ -11,6 +11,18 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   serverExternalPackages: ["undici", "archiver"],
   devIndicators: false,
+  // Every image in Opal is served as-is (the gem art, proxied thumbnails).
+  // No runtime image optimiser needed → sharp never has to be traced in.
+  images: {
+    unoptimized: true,
+  },
+  outputFileTracingExcludes: {
+    "*": [
+      "./node_modules/sharp/**",
+      "./node_modules/@img/sharp-*/**",
+      "./node_modules/@img/sharp-libvips-*/**",
+    ],
+  },
 };
 
 export default nextConfig;

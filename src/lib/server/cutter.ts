@@ -189,26 +189,46 @@ function buildCutArgs(
   if (opts.audioOnly && audioUrl) {
     args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", audioUrl);
     args.push("-vn", "-c:a", "libmp3lame", "-q:a", "0");
+    // rebase to zero so the file starts at 0:00 instead of the source offset
+    args.push("-af", "asetpts=PTS-STARTPTS");
     args.push("-metadata", "title=Opal Clip", "-id3v2_version", "3");
     args.push(outPath);
     return args;
   }
 
+  // Input index bookkeeping — video and audio may arrive as one or two inputs.
+  let vIdx = -1;
+  let aIdx = -1;
+
   if (combinedUrl) {
     args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", combinedUrl);
-    args.push("-map", "0:v:0", "-map", "0:a:0?");
+    vIdx = 0;
+    aIdx = 0;
   } else {
-    if (videoUrl) args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", videoUrl);
-    if (audioUrl) args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", audioUrl);
-    args.push("-map", "0:v:0");
-    args.push("-map", "1:a:0?");
+    if (videoUrl) {
+      args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", videoUrl);
+      vIdx = 0;
+    }
+    if (audioUrl) {
+      args.push("-ss", String(start), "-to", String(end), "-copyts", "-i", audioUrl);
+      aIdx = videoUrl ? 1 : 0;
+    }
+    if (vIdx >= 0) args.push("-map", `${vIdx}:v:0`);
+    if (aIdx >= 0) args.push("-map", `${aIdx}:a:0?`);
   }
 
   args.push("-c:v", "libx264", "-crf", String(opts.crf), "-preset", presetFor(opts.targetHeight), "-pix_fmt", "yuv420p");
+  // Rebase video AND audio to zero: with -copyts the streams otherwise keep the
+  // absolute source timestamp (5s → 12s), which leaves a leading gap in players
+  // that ignore the mp4 edit list.
+  const vf: string[] = [];
   if (opts.targetHeight && opts.srcHeight && opts.srcHeight > opts.targetHeight) {
-    args.push("-vf", `scale=-2:${opts.targetHeight}`);
+    vf.push(`scale=-2:${opts.targetHeight}`);
   }
+  vf.push("setpts=PTS-STARTPTS");
+  args.push("-vf", vf.join(","));
   args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000");
+  args.push("-af", "asetpts=PTS-STARTPTS");
   args.push("-movflags", "+faststart");
   args.push(outPath);
   return args;

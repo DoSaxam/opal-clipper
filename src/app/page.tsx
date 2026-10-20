@@ -1,5 +1,5 @@
-import { OpalApp } from "@/components/clipper/OpalApp";
+import { AppShell } from "@/components/opal/AppShell";
 
 export default function Page() {
-  return <OpalApp />;
+  return <AppShell />;
 }

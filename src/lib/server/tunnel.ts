@@ -373,3 +373,22 @@ export async function getTunnelStatus(): Promise<TunnelStatus> {
   t.lastCheck = Date.now();
   return status;
 }
+
+/**
+ * Fetch a remote asset through the WARP tunnel.
+ * Falls back to a direct fetch when the tunnel is unavailable.
+ */
+export async function proxyFetchThroughTunnel(
+  url: string,
+  init?: RequestInit
+): Promise<Response> {
+  try {
+    const st = await getTunnelStatus();
+    if (st.warpOn && st.httpProxyUp) {
+      return (await proxyFetch(url, init)) as unknown as Response;
+    }
+  } catch {
+    /* fall through to direct */
+  }
+  return fetch(url, init);
+}

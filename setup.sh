@@ -16,7 +16,7 @@ ARCH="$(uname -m)"
 OS="$(uname -s)"
 [ "$OS" = "Linux" ] || fail "This app targets Linux. On macOS it runs in dev mode only."
 
-step "1/6  Checking system requirements"
+step "1/7  Checking system requirements"
 # --- Node.js >= 20 ---
 if command -v node >/dev/null 2>&1; then
   NODE_VER=$(node -v | sed 's/v//' | cut -d. -f1)
@@ -43,7 +43,7 @@ for P in 3000 1080 8080 9898; do
 done
 ok "Port check done"
 
-step "2/6  Verifying helper binaries (yt-dlp, wireproxy, gost)"
+step "2/7  Verifying helper binaries (yt-dlp, wireproxy, gost)"
 cd scripts
 # yt-dlp
 ./yt-dlp --version >/dev/null 2>&1 || {
@@ -64,14 +64,16 @@ if [ "$ARCH" = "x86_64" ] || [ "$ARCH" = "amd64" ]; then
 else
   warn "Non-x86_64 arch ($ARCH): downloading wireproxy/gost…"
   A2="$([ "$ARCH" = "aarch64" ] && echo arm64 || echo "$ARCH")"
-  curl -fsSL -o wireproxy "https://github.com/whyvl/wireproxy/releases/latest/download/wireproxy_linux_${A2}" || fail "Download wireproxy manually → scripts/wireproxy"
+  curl -fsSL -o wireproxy.tgz "https://github.com/windtf/wireproxy/releases/latest/download/wireproxy_linux_${A2}.tar.gz" \
+    && tar xzf wireproxy.tgz && rm -f wireproxy.tgz \
+    || fail "Download wireproxy manually → scripts/wireproxy (https://github.com/windtf/wireproxy/releases)"
   GOST_URL=$(curl -fsSL https://api.github.com/repos/go-gost/gost/releases/latest | grep browser_download_url | grep "linux_${A2}.tar.gz" | cut -d'"' -f4 | head -1)
   [ -n "$GOST_URL" ] && { curl -fsSL -o gost.tgz "$GOST_URL" && tar xzf gost.tgz gost && rm -f gost.tgz; } || warn "Download gost manually → scripts/gost (https://github.com/go-gost/gost/releases)"
   chmod +x wireproxy gost 2>/dev/null || true
 fi
 cd ..
 
-step "3/6  WARP tunnel account"
+step "3/7  WARP tunnel account"
 if [ -f scripts/warp-tunnel.conf ]; then
   ok "Pre-registered WARP account found (scripts/warp-tunnel.conf) — using it."
   echo "   (Optional: fresh account →  cd scripts && rm -f wgcf-account.toml && ./wgcf register --accept-tos && ./wgcf generate"
@@ -93,7 +95,7 @@ PYEOF
   ok "Fresh WARP account registered"
 fi
 
-step "4/6  Installing Node dependencies"
+step "4/7  Installing Node dependencies"
 if command -v bun >/dev/null 2>&1; then
   bun install
 elif command -v npm >/dev/null 2>&1; then
@@ -103,15 +105,24 @@ else
 fi
 ok "Dependencies installed"
 
-step "5/6  Building production bundle"
+step "5/7  Building production bundle"
 if command -v bun >/dev/null 2>&1; then bun run build; else npm run build; fi
 [ -f .next/standalone/server.js ] || fail "Build did not produce .next/standalone/server.js"
 ok "Production build ready"
 
-step "6/6  Preparing storage"
+step "6/7  Generating PWA icons"
+if [ -f public/gem-hero.png ]; then
+  node scripts/make-icons.mjs >/dev/null 2>&1 && ok "Icons generated (public/icons)" \
+    || warn "Icon generation skipped (install sharp: npm i -D sharp)"
+else
+  warn "public/gem-hero.png missing — icons not regenerated"
+fi
+
+step "7/7  Preparing storage"
 mkdir -p storage/videos storage/clips
 ok "Storage ready (./storage)"
 
 echo -e "\n${GREEN}${BOLD}Setup complete!${NC}"
 echo "Start the app:   ${BOLD}bash start.sh${NC}"
 echo "It will run on:  ${BOLD}http://YOUR-SERVER-IP:3000${NC}"
+echo "Public URL:      ${BOLD}bash scripts/tunnel.sh --daemon${NC}"

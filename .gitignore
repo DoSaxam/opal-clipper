@@ -3,6 +3,7 @@ node_modules/
 
 # Build output
 .next/
+.next-stale-*/
 
 # Runtime data (clips, renders, job state)
 storage/
@@ -16,6 +17,7 @@ scripts/gost
 scripts/yt-dlp
 scripts/wireproxy
 scripts/wgcf
+scripts/cloudflared
 
 # wgcf working files
 scripts/wgcf-profile.conf

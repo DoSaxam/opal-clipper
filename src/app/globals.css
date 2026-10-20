@@ -3,24 +3,17 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ============================================================================
+   OPAL — design tokens
+   shadcn/ui variable contract (new-york) + an "Opal" brand layer.
+   Dark = default (deep cave + iridescent gem), Light = paper.
+   ========================================================================== */
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar: var(--sidebar);
-  --color-chart-5: var(--chart-5);
-  --color-chart-4: var(--chart-4);
-  --color-chart-3: var(--chart-3);
-  --color-chart-2: var(--chart-2);
-  --color-chart-1: var(--chart-1);
+  --font-sans: var(--font-ios);
+  --font-mono: var(--font-mono-opal);
   --color-ring: var(--ring);
   --color-input: var(--input);
   --color-border: var(--border);
@@ -37,174 +30,375 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  --radius-sm: calc(var(--radius) - 6px);
+  --radius-md: calc(var(--radius) - 3px);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) + 4px);
+  --radius-2xl: calc(var(--radius) + 10px);
+  --radius-3xl: calc(var(--radius) + 18px);
 }
 
+/* ---------- brand palette (theme independent) ---------- */
 :root {
-  --radius: 0.625rem;
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-/* ============================================================
-   OPAL CLIPPER — design system (dark cave · iridescent gem)
-   ============================================================ */
-
-:root {
-  --opal-bg: #0a0b0d;
-  --opal-bg-elev: #151a21;
-  --opal-bg-elev2: #1a202c;
-  --opal-fill: #2d3748;
-  --opal-border: rgba(45, 55, 72, 0.65);
-  --opal-mint: #81e6d9;
-  --opal-green: #68d391;
-  --opal-gold: #f6e05e;
-  --opal-blue: #63b3ed;
-  --opal-text: #f7fafc;
-  --opal-text2: #a0aec0;
-  --opal-text3: #718096;
-  --opal-teal: #4fd1c5;
-  --opal-violet: #553c9a;
+  --brand-teal: #4fd1c5;
+  --brand-blue: #63b3ed;
+  --brand-violet: #b794f4;
+  --brand-gold: #f6e05e;
+  --brand-green: #68d391;
+  --brand-rose: #fc8181;
+  --brand-gradient: linear-gradient(93deg, #4fd1c5 0%, #63b3ed 52%, #b794f4 100%);
   --font-ios: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text",
-    "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    "Segoe UI Variable Display", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono-opal: ui-monospace, "SF Mono", SFMono-Regular, "JetBrains Mono", Menlo,
+    Consolas, monospace;
 }
 
-html,
-body {
-  height: 100%;
-  overscroll-behavior: none;
+/* ---------- light (paper) ---------- */
+:root {
+  --radius: 0.875rem;
+
+  --background: #f4f6f9;
+  --foreground: #0b0e13;
+  --card: #ffffff;
+  --card-foreground: #0b0e13;
+  --popover: #ffffff;
+  --popover-foreground: #0b0e13;
+  --primary: #0f9e91;
+  --primary-foreground: #ffffff;
+  --secondary: #eaeef4;
+  --secondary-foreground: #0b0e13;
+  --muted: #eef1f6;
+  --muted-foreground: #5c6675;
+  --accent: #e6ecf3;
+  --accent-foreground: #0b0e13;
+  --destructive: #d64545;
+  --border: rgba(11, 14, 19, 0.1);
+  --input: rgba(11, 14, 19, 0.12);
+  --ring: rgba(15, 158, 145, 0.45);
+
+  --chart-1: #0f9e91;
+  --chart-2: #3b82f6;
+  --chart-3: #8b5cf6;
+  --chart-4: #d97706;
+  --chart-5: #e11d48;
+
+  --sidebar: #ffffff;
+  --sidebar-foreground: #0b0e13;
+  --sidebar-primary: #0f9e91;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #eef1f6;
+  --sidebar-accent-foreground: #0b0e13;
+  --sidebar-border: rgba(11, 14, 19, 0.09);
+  --sidebar-ring: rgba(15, 158, 145, 0.45);
+
+  /* surfaces */
+  --surface: rgba(255, 255, 255, 0.78);
+  --surface-strong: #ffffff;
+  --surface-sunken: rgba(11, 14, 19, 0.045);
+  --hairline: rgba(11, 14, 19, 0.08);
+  --glass-blur: 22px;
 }
 
-body {
-  font-family: var(--font-ios);
-  -webkit-font-smoothing: antialiased;
-  text-rendering: optimizeLegibility;
+/* ---------- dark (cave) ---------- */
+.dark {
+  --background: #07080a;
+  --foreground: #f2f5f9;
+  --card: #0d1016;
+  --card-foreground: #f2f5f9;
+  --popover: #11151d;
+  --popover-foreground: #f2f5f9;
+  --primary: #4fd1c5;
+  --primary-foreground: #04191a;
+  --secondary: #161b24;
+  --secondary-foreground: #e6edf6;
+  --muted: #12161e;
+  --muted-foreground: #8a94a6;
+  --accent: #1a212b;
+  --accent-foreground: #f2f5f9;
+  --destructive: #fc8181;
+  --border: rgba(255, 255, 255, 0.09);
+  --input: rgba(255, 255, 255, 0.12);
+  --ring: rgba(79, 209, 197, 0.55);
+
+  --chart-1: #4fd1c5;
+  --chart-2: #63b3ed;
+  --chart-3: #b794f4;
+  --chart-4: #f6e05e;
+  --chart-5: #fc8181;
+
+  --sidebar: #0b0e13;
+  --sidebar-foreground: #f2f5f9;
+  --sidebar-primary: #4fd1c5;
+  --sidebar-primary-foreground: #04191a;
+  --sidebar-accent: #1a212b;
+  --sidebar-accent-foreground: #f2f5f9;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --sidebar-ring: rgba(79, 209, 197, 0.55);
+
+  --surface: rgba(21, 26, 33, 0.72);
+  --surface-strong: #151a21;
+  --surface-sunken: rgba(0, 0, 0, 0.32);
+  --hairline: rgba(255, 255, 255, 0.08);
+  --glass-blur: 26px;
 }
 
-/* big display numbers — light, tight, like Opal's score */
-.opal-display {
-  font-weight: 300;
-  letter-spacing: -0.045em;
-  font-variant-numeric: tabular-nums;
+/* ============================================================================
+   base
+   ========================================================================== */
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  html {
+    height: 100%;
+    -webkit-text-size-adjust: 100%;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    height: 100%;
+    @apply bg-background text-foreground;
+    font-family: var(--font-ios);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior-y: none;
+  }
+
+  /* no blue tap flash, no accidental text selection on UI chrome */
+  button,
+  a,
+  [role="button"] {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  ::selection {
+    background: color-mix(in oklab, var(--primary) 30%, transparent);
+  }
+
+  /* crisp numeric readouts (scores, timers, bitrates) */
+  .tabular,
+  [class*="tabular-nums"] {
+    font-variant-numeric: tabular-nums;
+  }
 }
 
-/* film grain */
-.opal-noise::after {
+/* ============================================================================
+   utilities
+   ========================================================================== */
+
+@layer utilities {
+/* glass surface used by every card-like block */
+.surface-glass {
+  background: var(--surface);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: 1px solid var(--hairline);
+  box-shadow:
+    0 1px 0 0 color-mix(in oklab, white 6%, transparent) inset,
+    0 18px 44px -24px rgba(0, 0, 0, 0.6);
+}
+
+.surface-sunken {
+  background: var(--surface-sunken);
+  border: 1px solid var(--hairline);
+}
+
+/* the brand gradient, as text */
+.text-brand-gradient {
+  background: var(--brand-gradient);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.bg-brand-gradient {
+  background: var(--brand-gradient);
+}
+
+.shadow-brand {
+  box-shadow: 0 14px 38px -12px color-mix(in oklab, var(--primary) 55%, transparent);
+}
+
+/* hairline top edge (Apple-style specular line) */
+.edge-top {
+  position: relative;
+}
+.edge-top::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    color-mix(in oklab, white 22%, transparent),
+    transparent
+  );
+  pointer-events: none;
+}
+
+/* film grain overlay */
+.opal-grain::after {
   content: "";
   position: absolute;
   inset: 0;
   pointer-events: none;
-  opacity: 0.05;
+  opacity: 0.035;
   background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
   background-size: 180px 180px;
   z-index: 5;
   mix-blend-mode: overlay;
 }
 
-/* gem idle animations */
-@keyframes gem-float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-7px); }
+/* safe areas — real phones only */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
 }
-@keyframes gem-glow-pulse {
-  0%, 100% { opacity: 0.55; transform: scale(1); }
-  50% { opacity: 0.95; transform: scale(1.07); }
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
-@keyframes rays-rotate {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-@keyframes sparkle-twinkle {
-  0%, 100% { opacity: 0.1; transform: scale(0.6); }
-  50% { opacity: 0.9; transform: scale(1); }
-}
-@keyframes shimmer-sweep {
-  0% { transform: translateX(-120%); }
-  100% { transform: translateX(220%); }
-}
-@keyframes hue-breathe {
-  0%, 100% { filter: hue-rotate(0deg) saturate(1.05); }
-  50% { filter: hue-rotate(14deg) saturate(1.2); }
-}
-@keyframes aurora-drift {
-  0%, 100% { transform: translate(-4%, 0) scale(1); opacity: 0.5; }
-  50% { transform: translate(4%, -3%) scale(1.08); opacity: 0.75; }
+.safe-x {
+  padding-left: max(env(safe-area-inset-left, 0px), 0px);
+  padding-right: max(env(safe-area-inset-right, 0px), 0px);
 }
 
-.animate-gem-float { animation: gem-float 5.5s ease-in-out infinite; }
-.animate-gem-glow { animation: gem-glow-pulse 4.2s ease-in-out infinite; }
-.animate-rays { animation: rays-rotate 70s linear infinite; }
-.animate-sparkle { animation: sparkle-twinkle 2.8s ease-in-out infinite; }
-.animate-hue-breathe { animation: hue-breathe 7s ease-in-out infinite; }
-.animate-aurora { animation: aurora-drift 12s ease-in-out infinite; }
+/* thin, quiet scrollbars */
+.opal-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--muted-foreground) 35%, transparent) transparent;
+}
+.opal-scroll::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.opal-scroll::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--muted-foreground) 32%, transparent);
+  border-radius: 999px;
+}
+.opal-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
 
-/* shimmer skeleton */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+}
+
+/* ============================================================================
+   motion primitives
+   ========================================================================== */
+
+@layer utilities {
+@keyframes opal-float {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+  50% {
+    transform: translate3d(0, -8px, 0);
+  }
+}
+@keyframes opal-pulse {
+  0%,
+  100% {
+    opacity: 0.5;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.06);
+  }
+}
+@keyframes opal-rotate {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes opal-twinkle {
+  0%,
+  100% {
+    opacity: 0.12;
+    transform: scale(0.65);
+  }
+  50% {
+    opacity: 0.9;
+    transform: scale(1);
+  }
+}
+@keyframes opal-drift {
+  0%,
+  100% {
+    transform: translate3d(-4%, 0, 0) scale(1);
+    opacity: 0.5;
+  }
+  50% {
+    transform: translate3d(4%, -3%, 0) scale(1.08);
+    opacity: 0.78;
+  }
+}
+@keyframes opal-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(220%);
+  }
+}
+@keyframes opal-hue {
+  0%,
+  100% {
+    filter: hue-rotate(0deg) saturate(1.05);
+  }
+  50% {
+    filter: hue-rotate(16deg) saturate(1.22);
+  }
+}
+
+.animate-float {
+  animation: opal-float 5.5s ease-in-out infinite;
+}
+.animate-pulse-soft {
+  animation: opal-pulse 4.2s ease-in-out infinite;
+}
+.animate-rotate-slow {
+  animation: opal-rotate 72s linear infinite;
+}
+.animate-twinkle {
+  animation: opal-twinkle 2.8s ease-in-out infinite;
+}
+.animate-drift {
+  animation: opal-drift 13s ease-in-out infinite;
+}
+.animate-hue {
+  animation: opal-hue 7s ease-in-out infinite;
+}
+.animate-shimmer {
+  animation: opal-shimmer 1.9s infinite;
+}
+
 .opal-shimmer {
   position: relative;
   overflow: hidden;
@@ -213,55 +407,21 @@ body {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(100deg, transparent 20%, rgba(129, 230, 217, 0.09) 45%, rgba(129, 230, 217, 0.16) 50%, rgba(129, 230, 217, 0.09) 55%, transparent 80%);
-  animation: shimmer-sweep 1.8s infinite;
+  background: linear-gradient(
+    100deg,
+    transparent 20%,
+    color-mix(in oklab, var(--primary) 10%, transparent) 45%,
+    color-mix(in oklab, var(--primary) 18%, transparent) 50%,
+    color-mix(in oklab, var(--primary) 10%, transparent) 55%,
+    transparent 80%
+  );
+  animation: opal-shimmer 1.9s infinite;
+}
 }
 
-/* thin elegant scrollbars */
-.opal-scroll {
-  scrollbar-width: thin;
-  scrollbar-color: #2d3748 transparent;
-}
-.opal-scroll::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-.opal-scroll::-webkit-scrollbar-thumb {
-  background: #2d3748;
-  border-radius: 999px;
-}
-.opal-scroll::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-/* hide scrollbars for horizontal chip rows */
-.no-scrollbar::-webkit-scrollbar { display: none; }
-.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-/* iOS-like tap highlight removal */
-* {
-  -webkit-tap-highlight-color: transparent;
-}
-
-/* text selection tint */
-::selection {
-  background: rgba(129, 230, 217, 0.25);
-}
-
-/* safe areas for real phones */
-.opal-safe-top { padding-top: env(safe-area-inset-top); }
-.opal-safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
-
-/* fake iOS status bar: hide on real touch devices (they have a real one) */
-@media (hover: none) and (pointer: coarse) {
-  .opal-statusbar { display: none !important; }
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
+/* display numerals — light, tight, Apple-ish */
+.display-num {
+  font-weight: 300;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
 }

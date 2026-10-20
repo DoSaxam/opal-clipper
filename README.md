@@ -1,6 +1,8 @@
 # Opal Clipper — Video Clip Cutter (YouTube tak, 4K tak)
 
-Paste karo link → timestamps do → frame-accurate clips paao. Preview karo, quality chuno (360p se **4K 2160p** tak), single ya bulk ZIP download karo.
+Paste karo link → timestamps do → frame-accurate clips paao. Preview karo, quality chuno (360p se **4K 2160p** tak), single ya bulk ZIP download karo — aur app ko phone ke home screen pe install kar lo.
+
+**v2 — full redesign.** UI ab poora shadcn/ui + Framer Motion stack pe hai (fake phone-frame hat gaya, real responsive app shell), aur app **installable PWA** hai: "Add to Home Screen" → fullscreen, offline-capable webapp.
 
 **YouTube datacenter-IP block ka permanent solution andar hai** — Cloudflare WARP tunnel (userspace, root ki zaroorat nahi) automatically egress IP badal deta hai, isliye VPS/server par bhi YouTube clips kaat-ne me koi "Sign in to confirm you're not a bot" error nahi aata.
 
@@ -10,12 +12,14 @@ Paste karo link → timestamps do → frame-accurate clips paao. Preview karo, q
 
 - **Koi bhi video link** — YouTube, plus yt-dlp supported 1000+ sites (Vimeo, Twitter/X, Dailymotion, direct MP4…)
 - **Bulk timestamps** — ek saath jitne chaho ranges (`0:45 to 0:52`, `2:31-2:38`, `1:05:10 - 1:05:20`, ya seconds `90-96`). Har timestamp = ek clip card, sab parallel cut hote hain
-- **Frame-accurate cutting** — input-seek + `-copyts` + re-encode: exact second pe cut, black-frame/empty output nahi
-- **Per-clip preview** — har card me inline player (720p), custom scrub bar
+- **Frame-accurate cutting** — input-seek + `-copyts` + re-encode, aur output timestamps zero pe rebase (har player par 0:00 se start, koi leading gap nahi)
+- **Per-clip preview** — har card me inline player (720p), custom scrub bar, poster frame
 - **Quality select** — source ke hisaab se: 4K · 2160p / 2K · 1440p / 1080p / 720p / 480p / 360p / MP3
 - **Bulk download** — multiple clips select → ek ZIP
-- **Premium iOS-style UI** — dark, glass, spring animations (Framer Motion)
+- **Installable PWA** — manifest + service worker + icons; iOS pe "Add to Home Screen" guide sheet, Android/Chromium pe native install prompt
+- **Premium Apple-inspired UI** — real app shell (desktop rail + mobile bottom nav), glass surfaces, spring animations (Framer Motion), Lucide icons, dark + light theme
 - **Background jobs** — server-side queue (concurrency 2), browser band kar do, clips ban-te rehte hain; state disk pe persist hoti hai
+- **Thumbnail proxy** — YouTube thumbnails server se WARP ke through serve hote hain, isliye browser ka blocked egress bhi UI break nahi karta
 
 ---
 
@@ -38,7 +42,7 @@ Root ki zaroorat **nahi** hai — sab kuch project folder me userspace chalta ha
 
 ```bash
 unzip opal-clipper.zip && cd opal-clipper
-bash setup.sh        # deps + binaries + WARP + production build  (~2-4 min)
+bash setup.sh        # deps + binaries + WARP + icons + production build  (~2-4 min)
 bash start.sh        # app live on :3000
 ```
 
@@ -47,128 +51,115 @@ Browser me kholo: `http://YOUR-SERVER-IP:3000`
 > Port change karna ho: `PORT=8080 bash start.sh`
 > Dev mode (hot reload): `npm run dev` (ya `bun run dev`)
 
+### Public URL (internet se access)
+
+```bash
+bash scripts/tunnel.sh --daemon     # Cloudflare quick tunnel → https://xxx.trycloudflare.com
+cat scripts/tunnel.url               # URL yahan
+```
+
+Tunnel band karna ho: `pkill -f cloudflared`
+
+---
+
+## Phone pe install (Add to Home Screen)
+
+1. Phone me browser se app kholo (https wala URL best hai)
+2. **iPhone (Safari)** → Share button → *Add to Home Screen* (app me bhi ek built-in guide sheet hai)
+3. **Android (Chrome)** → menu → *Install app* (app me khud "Add to Home Screen" button aa jayega)
+4. Ab app home screen se fullscreen khulega — offline shell cached rehta hai
+
 ---
 
 ## How it works (architecture)
 
 ```
- Browser (Next.js UI)
+ Browser (Next.js UI  ·  shadcn/ui + Framer Motion)
     │  POST /api/analyze {url}
     ▼
  yt-dlp ──(direct try)──► site
     │  blocked? (YouTube datacenter-IP wall)
     ▼
- SOCKS5 :1080 ◄── wireproxy (userspace WireGuard) ──► Cloudflare WARP egress IP
-    ▲
- gost :8080 (HTTP bridge) ◄── undici ProxyAgent
-    ▲
- media-proxy :9898 (in-process HTTP Range passthrough) ◄── ffmpeg
+ wireproxy (userspace WireGuard) ──► Cloudflare WARP egress IP
     │
-    ▼  ffmpeg -ss START -to END -copyts -i <video> -i <audio> → re-encode
- Clip files (storage/clips/<id>/preview.mp4, q_2160.mp4, …)
+    ▼
+ gost (HTTP proxy) ──► local range-proxy (:9898) ──► ffmpeg
     │
-    ▼  /api/render/<id>/file  ·  /api/zip?ids=…
- Download / Bulk ZIP
+    ▼
+ x264/aac re-encode → storage/clips/<id>/{preview.mp4, poster.jpg, q_<quality>.mp4}
 ```
 
-Key points:
+- **Tunnel stack:** `wireproxy` (SOCKS5, :1080) → `gost` (HTTP bridge, :8080) → in-process media range-proxy (:9898) jo ffmpeg ke liye byte-range fetch karta hai
+- **Cutting:** input-side `-ss/-to` + `-copyts` + `setpts/asetpts` rebase → exact second pe cut, zero-based output
+- **Render queue:** background scheduler, concurrency 2, state `storage/state.json` me persist
+- **Frontend:** App Router + Tailwind v4 + shadcn/ui primitives (Radix) + framer-motion + lucide-react + zustand
 
-1. **Analyze**: yt-dlp pehle direct try karta hai (non-YouTube sites fast), fail hone par WARP tunnel se. Stream URLs IP-locked hote hain, isliye route (direct/tunnel) cache hota hai.
-2. **Cut**: ffmpeg direct-URL pe HTTP Range requests maarta hai — poora video download nahi hota, sirf clip ke bytes. Media-proxy range requests ko gost → WARP se forward karta hai.
-3. **Render**: preview 720p pe cut hota hai; download aapki chosen quality me fresh render hota hai (frame-accurate).
-4. **Self-healing tunnel**: `/api/health` har poll pe tunnel check karta hai — wireproxy/gost down hue to auto-respawn, stuck handshake ho to restart.
+### Design system
 
-### Bundle me kya hai
-
-```
-opal-clipper/
-├── setup.sh                  # one-shot installer
-├── start.sh                  # production start (nohup + health wait)
-├── package.json              # minimal deps (14 packages)
-├── next.config.ts            # standalone output + serverExternalPackages
-├── src/
-│   ├── app/                  # UI pages + API routes
-│   │   └── api/              # analyze · clips · clip/[id]/preview|poster · render/[id]/file · zip · health · state
-│   ├── components/clipper/   # OpalApp, HomeScreen, VideoScreen, QueueScreen, ClipsScreen,
-│   │                         # ClipCard, QualitySheet, TabBar, GemHero, BackgroundFX, …
-│   └── lib/
-│       ├── clipper/          # zustand store, timestamp parser, types
-│       └── server/           # ytdlp wrapper · tunnel supervisor · cutter (ffmpeg) ·
-│                             # scheduler (queue) · state (persist) · serve (range streams)
-├── scripts/
-│   ├── yt-dlp                # v2026.08.19 standalone (static, x86_64)
-│   ├── wireproxy             # userspace WireGuard client (static)
-│   ├── gost                  # HTTP↔SOCKS bridge (static)
-│   ├── wgcf                  # WARP account register (naya account banana ho to)
-│   ├── warp-tunnel.conf      # pre-registered WARP account (out-of-the-box ready)
-│   └── wgcf-account.toml     # account backup
-├── public/                   # gem hero art, icons
-└── docs/DEVLOG.md            # poori development history
-```
-
----
-
-## API (agar programmatic use karna ho)
-
-| Endpoint | Kaam |
+| Token group | Values |
 |---|---|
-| `POST /api/analyze` `{url}` | video info + available heights |
-| `POST /api/clips` `{videoId, ranges:[{start,end}]}` | bulk clips queue |
-| `GET /api/state` | videos + clips + renders + tunnel status |
-| `GET /api/clip/[id]/preview` | 720p preview (Range-supported) |
-| `POST /api/render` `{clipIds, quality}` | quality render start (`"2160"`, `"1080"`, …, `"mp3"`) |
-| `GET /api/render/[id]/file` | download rendered file |
-| `GET /api/zip?ids=<renderId,renderId>` | bulk ZIP |
-| `GET /api/health` | tunnel + proxy health |
+| Brand | teal `#4fd1c5` → blue `#63b3ed` → violet `#b794f4` gradient |
+| Surfaces | dark `#07080a` / `#0d1016` / glass blur 26px · light `#f4f6f9` / `#ffffff` |
+| Radius | 14px base → 22/28/32px cards (continuous, Apple-style) |
+| Type | system stack (SF Pro on Apple, Segoe on Windows, Roboto on Android) |
+| Motion | 150–200ms ease-out, spring press feedback, layout-animated tab pill |
 
 ---
 
-## Troubleshooting
+## API
 
-**`Port 3000 is busy`** → `PORT=3001 bash start.sh` ya `fuser -k 3000/tcp`
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/api/analyze` | `{url}` → video meta + available heights |
+| `POST` | `/api/clips` | `{videoId, ranges:[{start,end}]}` → queued clips |
+| `POST` | `/api/render` | `{clipIds:[], quality}` → render jobs |
+| `GET` | `/api/clip/:id/preview` | 720p preview (HTTP Range supported) |
+| `GET` | `/api/clip/:id/poster` | poster jpg |
+| `GET` | `/api/render/:id/file` | rendered file download |
+| `GET` | `/api/zip?ids=` | bulk ZIP |
+| `GET` | `/api/thumb?v=` | thumbnail proxy (WARP) |
+| `POST` | `/api/clips/delete` | `{ids:[]}` |
+| `GET` | `/api/state` | full app state (polling) |
+| `GET` | `/api/health` | tunnel + service health |
 
-**YouTube clip fail + health me `warpOn:false`** → WARP endpoint down hai:
+---
+
+## Testing
+
 ```bash
-cd scripts && rm -f wgcf-account.toml wgcf-profile.conf warp-tunnel.conf
-./wgcf register --accept-tos && ./wgcf generate
-# [Interface]+[Peer] blocks ko warp-tunnel.conf me copy karo, end me ye rakho:
-# [Socks5]
-# BindAddress = 127.0.0.1:1080
-cd .. && bash start.sh
+bash scripts/e2e-test.sh
 ```
 
-**yt-dlp outdated (naye YouTube changes)** → `cd scripts && curl -fsSL -o yt-dlp https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp_linux && chmod +x yt-dlp`
+Real pipeline test karta hai: analyze → cut → preview (206) → poster → render → download → ZIP → delete. 13 checks, har step ka output live aata hai.
 
-**Non-x86_64 server (ARM)** → `setup.sh` auto-download karega wireproxy/gost/yt-dlp ke arm64 builds
+---
 
-**Systemd unit (auto-restart on reboot)**
-```ini
-# /etc/systemd/system/opal.service
-[Unit]
-Description=Opal Clipper
-After=network.target
+## Project layout
 
-[Service]
-Type=simple
-User=YOURUSER
-WorkingDirectory=/path/to/opal-clipper
-ExecStart=/usr/bin/node .next/standalone/server.js
-Environment=PORT=3000
-Environment=HOSTNAME=0.0.0.0
-Restart=always
-
-[Install]
-WantedBy=multi-user.target
 ```
-```bash
-sudo systemctl enable --now opal
+src/
+  app/
+    api/            analyze · clips · render · zip · state · health · thumb
+    globals.css     design tokens (shadcn contract + Opal brand layer)
+    layout.tsx      metadata · PWA meta · theme provider
+  components/
+    ui/             shadcn/ui primitives (button, card, sheet, drawer, tabs, …)
+    opal/           AppShell · screens · GemHero · InstallPrompt · Thumb
+  lib/
+    clipper/        types · zustand store · timestamp parser
+    server/         cutter · scheduler · state · tunnel · ytdlp · serve
+scripts/
+  setup.sh          one-shot install
+  start.sh          production start
+  tunnel.sh         public URL (Cloudflare quick tunnel)
+  e2e-test.sh      end-to-end pipeline test
+  make-icons.mjs    PWA icon generation
 ```
 
 ---
 
-## Notes
+## Notes / limits
 
-- Storage sab kuch `./storage/` me — clips delete karne par files bhi clean ho jaati hain (orphan video cache samet)
-- Stream URLs ~6 ghante valid — app 3h baad auto-refresh karta hai
-- Live streams, private/members-only/age-restricted videos supported nahi hain
-- Preview 720p; final render aapki chosen quality me crisp hota hai (CRF 18)
+- 4K render CPU heavy hai — 2-core VPS par 1080p smooth, 4K slow (timeout 7 min tak)
+- Stream URLs ~6 ghante valid rehti hain; app 3 ghante pe refresh karta hai, stale (403) pe auto-retry
+- HLS-only sources (kuch live streams) precisely cut nahi ho sakte — app clear error dikhata hai
