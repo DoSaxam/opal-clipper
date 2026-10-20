@@ -8,7 +8,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 PORT="${PORT:-3000}"
-BASE="http://127.0.0.1:$PORT"
+BASE="${BASE:-http://127.0.0.1:$PORT}"
 VIDEO_URL="${VIDEO_URL:-https://www.youtube.com/watch?v=aqz-KE-bpKQ}"
 PASS=0; FAIL=0
 ok()   { echo -e "  \033[0;32m✔\033[0m $1"; PASS=$((PASS+1)); }
@@ -108,8 +108,15 @@ print('  entries:', z.namelist())
 PY
 
 step "10. delete clips"
-curl -s -X POST "$BASE/api/clips/delete" -H 'Content-Type: application/json' \
-  -d "{\"ids\":$CLIP_IDS_JSON}" --max-time 30 >/dev/null
+DEL_CODE=$(curl -s -o /tmp/opal-del.json -w '%{http_code}' -X POST "$BASE/api/clips/delete" \
+  -H 'Content-Type: application/json' -d "{\"ids\":$CLIP_IDS_JSON}" --max-time 30)
+if [ "$DEL_CODE" != "200" ]; then
+  # transient tunnel hiccup — retry once
+  sleep 2
+  DEL_CODE=$(curl -s -o /tmp/opal-del.json -w '%{http_code}' -X POST "$BASE/api/clips/delete" \
+    -H 'Content-Type: application/json' -d "{\"ids\":$CLIP_IDS_JSON}" --max-time 30)
+fi
+echo "  delete HTTP $DEL_CODE: $(cat /tmp/opal-del.json)"
 LEFT=$(MY_IDS="$CLIP_IDS_JSON" python3 -c "
 import sys,json,os
 d=json.load(sys.stdin)
