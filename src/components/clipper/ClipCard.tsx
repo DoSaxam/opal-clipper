@@ -2,17 +2,17 @@
 
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useMotionValue, useSpring } from "framer-motion";
-import {
-  Play,
-  Download,
-  Trash2,
-  Loader2,
-  CircleCheck,
-  TriangleAlert,
-  Check,
-  ChevronDown,
-} from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { TapButton } from "./TapButton";
+import {
+  CheckGlyph,
+  ChevronDown,
+  CircleCheckGlyph,
+  CircleXGlyph,
+  DownloadGlyph,
+  PlayGlyph,
+  TrashGlyph,
+} from "./icons";
 import { useOpal } from "@/lib/clipper/store";
 import { fmtClock, type Clip, type RenderJob, type VideoInfo } from "@/lib/clipper/types";
 
@@ -87,7 +87,7 @@ export function ClipCard({
   const dur = clip.end - clip.start;
 
   return (
-    <div ref={cardRef} className="perspective-[1100px]" onPointerMove={onTilt} onPointerLeave={untilt}>
+    <div ref={cardRef} className="perspective-1100" onPointerMove={onTilt} onPointerLeave={untilt}>
       <motion.div
         layout
         initial={{ opacity: 0, y: 16 }}
@@ -99,11 +99,12 @@ export function ClipCard({
           rotateX: srx,
           rotateY: sry,
           transformStyle: "preserve-3d",
-          background: "#0F1011",
-          borderRadius: 12,
+          background:
+            "radial-gradient(120% 90% at 8% 0%, rgba(28,36,33,1) 0%, rgba(16,18,17,1) 46%, rgba(13,15,14,1) 100%)",
+          borderRadius: 28,
           boxShadow: isSelected
-            ? "rgba(228,242,34,0.5) 0 0 0 1px inset, rgba(0,0,0,0.5) 0 8px 32px"
-            : "#23252A 0 0 0 1px inset, rgba(0,0,0,0.35) 0 4px 20px",
+            ? "inset 0 0 0 1.5px rgba(183,247,230,0.55), 0 8px 32px rgba(0,0,0,0.5), 0 0 28px -6px rgba(183,247,230,0.25)"
+            : "inset 0 0 0 1px rgba(255,255,255,0.055), 0 18px 40px -24px rgba(0,0,0,0.9)",
         }}
         className="overflow-hidden"
       >
@@ -144,86 +145,110 @@ export function ClipCard({
                   className="absolute inset-0 grid place-items-center pointer-events-none"
                 >
                   <div
-                    className="w-[52px] h-[52px] rounded-full grid place-items-center"
+                    className="grid place-items-center"
                     style={{
-                      background: "rgba(8,9,10,0.55)",
+                      width: 52,
+                      height: 52,
+                      borderRadius: "50%",
+                      background: "rgba(11,14,13,0.55)",
                       backdropFilter: "blur(12px)",
-                      boxShadow: "rgba(255,255,255,0.14) 0 0 0 1px inset",
+                      boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.14)",
                       opacity: playing ? 0 : 1,
                       transition: "opacity .3s",
                     }}
                   >
-                    <Play size={20} className="text-paper ml-0.5" fill="white" />
+                    <PlayGlyph style={{ width: 18, height: 20, color: "#ffffff", marginLeft: 2 }} />
                   </div>
                 </motion.div>
               </AnimatePresence>
-              {/* bottom bar — acid progress */}
+              {/* bottom bar — mint progress */}
               <div
                 className="absolute bottom-0 inset-x-0 px-3.5 pb-2.5 pt-8"
-                style={{ background: "linear-gradient(to top, rgba(8,9,10,0.85), transparent)" }}
+                style={{ background: "linear-gradient(to top, rgba(7,10,9,0.85), transparent)" }}
               >
                 <div className="flex items-center gap-2">
-                  <span className="mono-meta text-[10px] text-mist">{fmtClock(curTime)}</span>
-                  <div className="flex-1 h-[3px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.14)" }}>
+                  <span className="mono-meta text-[10px]" style={{ color: "#d7dfdb" }}>
+                    {fmtClock(curTime)}
+                  </span>
+                  <div className="flex-1 h-[3.5px] rounded-full overflow-hidden" style={{ background: "rgba(255,255,255,0.14)" }}>
                     <div
-                      className="h-full rounded-full"
-                      style={{ width: `${progress}%`, background: "#E4F222" }}
+                      className="opal-progress h-full"
+                      style={{ width: `${progress}%` }}
                     />
                   </div>
-                  <span className="mono-meta text-[10px] text-ash">{fmtClock(dur)}</span>
+                  <span className="mono-meta text-[10px]" style={{ color: "#9db0a8" }}>
+                    {fmtClock(dur)}
+                  </span>
                 </div>
               </div>
             </>
           ) : clip.status === "error" ? (
             <div className="w-full h-full grid place-items-center" style={{ background: "rgba(235,87,87,0.04)" }}>
               <div className="flex flex-col items-center gap-2 px-6 text-center">
-                <TriangleAlert size={20} className="text-coral" />
-                <p className="text-[11.5px] text-coral leading-snug line-clamp-2">{clip.error}</p>
+                <CircleXGlyph style={{ width: 22, height: 22 }} />
+                <p className="text-[11.5px] leading-snug line-clamp-2" style={{ color: "#eb5757" }}>
+                  {clip.error}
+                </p>
               </div>
             </div>
           ) : (
-            <div className="w-full h-full grid place-items-center shimmer" style={{ background: "#0D0E10" }}>
+            <div className="w-full h-full grid place-items-center shimmer" style={{ background: "#0d0f0e" }}>
               <div className="flex flex-col items-center gap-2.5">
                 <div
-                  className="w-10 h-10 rounded-[8px] grid place-items-center"
-                  style={{ background: "rgba(228,242,34,0.07)", boxShadow: "rgba(228,242,34,0.2) 0 0 0 1px inset" }}
+                  className="grid place-items-center"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: 14,
+                    background: "rgba(183,247,230,0.07)",
+                    boxShadow: "inset 0 0 0 1px rgba(183,247,230,0.22)",
+                  }}
                 >
-                  <Loader2 size={16} className="animate-spin text-acid" />
+                  <Loader2 size={16} className="animate-spin" style={{ color: "#CDFCE2" }} />
                 </div>
-                <span className="mono-meta text-[10.5px] text-acid">{clip.stage.toUpperCase()} {clip.progress}%</span>
+                <span className="mono-meta text-[10.5px]" style={{ color: "#CDFCE2" }}>
+                  {clip.stage.toUpperCase()} {clip.progress}%
+                </span>
               </div>
             </div>
           )}
 
-          {/* range badge — mono glass */}
+          {/* range badge — glass chip */}
           <div className="absolute top-2.5 left-2.5">
             <span
-              className="mono-meta text-[10.5px] text-mist px-2.5 py-1 rounded-[4px]"
+              className="mono-meta text-[10.5px] px-2.5 py-1"
               style={{
-                background: "rgba(8,9,10,0.72)",
+                borderRadius: 999,
+                color: "#d7dfdb",
+                background: "rgba(11,14,13,0.72)",
                 backdropFilter: "blur(10px)",
-                boxShadow: "rgba(255,255,255,0.12) 0 0 0 1px inset",
+                boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.12)",
               }}
             >
               {fmtClock(clip.start)} – {fmtClock(clip.end)}
             </span>
           </div>
 
-          {/* select check — acid */}
+          {/* select check — mint */}
           <AnimatePresence>
             {selectMode && (
               <motion.div
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
                 exit={{ scale: 0 }}
-                className="absolute top-2.5 right-2.5 w-[26px] h-[26px] rounded-[6px] grid place-items-center"
+                className="absolute top-2.5 right-2.5 grid place-items-center"
                 style={{
-                  background: isSelected ? "#E4F222" : "rgba(8,9,10,0.6)",
-                  boxShadow: isSelected ? "none" : "rgba(255,255,255,0.3) 0 0 0 1.5px inset",
+                  width: 26,
+                  height: 26,
+                  borderRadius: 9,
+                  background: isSelected ? "#CDFCE2" : "rgba(11,14,13,0.6)",
+                  boxShadow: isSelected
+                    ? "0 0 16px -2px rgba(183,247,230,0.6)"
+                    : "inset 0 0 0 1.5px rgba(255,255,255,0.3)",
                   backdropFilter: "blur(6px)",
                 }}
               >
-                {isSelected && <Check size={14} strokeWidth={3.2} className="text-void" />}
+                {isSelected && <CheckGlyph style={{ width: 13, height: 12, color: "#0b0e0d" }} />}
               </motion.div>
             )}
           </AnimatePresence>
@@ -232,16 +257,19 @@ export function ClipCard({
         {/* ===== meta + actions ===== */}
         <div className="px-4 pt-3 pb-4">
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[12.5px] text-mist truncate flex-1">{video?.title || "Clip"}</p>
-            <span className="mono-meta text-[10.5px] text-ash shrink-0">{dur.toFixed(1)}s</span>
+            <p className="text-[12.5px] truncate flex-1" style={{ color: "#d7dfdb" }}>
+              {video?.title || "Clip"}
+            </p>
+            <span className="mono-meta text-[10.5px] shrink-0" style={{ color: "#9db0a8" }}>
+              {dur.toFixed(1)}s
+            </span>
           </div>
 
           {/* cutting progress */}
           {(clip.status === "cutting" || clip.status === "queued") && (
-            <div className="mt-2.5 h-[3px] rounded-full overflow-hidden" style={{ background: "#161718" }}>
+            <div className="mt-2.5 h-[4px] rounded-full overflow-hidden" style={{ background: "#191e1c" }}>
               <motion.div
-                className="h-full rounded-full"
-                style={{ background: "#E4F222" }}
+                className="opal-progress h-full"
                 animate={{ width: `${clip.progress}%` }}
                 transition={{ type: "spring", stiffness: 60, damping: 18 }}
               />
@@ -253,28 +281,28 @@ export function ClipCard({
               {/* quality — ghost */}
               <TapButton
                 onClick={() => onQuality(clip)}
-                className="btn-ghost h-[34px] px-3 flex items-center gap-1.5 text-[12.5px]"
+                className="btn-ghost h-[34px] px-3.5 flex items-center gap-1.5 text-[12.5px]"
               >
                 {activeRender ? (
                   <>
-                    <Loader2 size={12} className="animate-spin text-acid" />
-                    <span className="mono-meta text-acid">
+                    <Loader2 size={12} className="animate-spin" style={{ color: "#CDFCE2" }} />
+                    <span className="mono-meta" style={{ color: "#CDFCE2" }}>
                       {activeRender.quality === "mp3" ? "MP3" : `${activeRender.quality}P`} {Math.round(activeRender.progress)}%
                     </span>
                   </>
                 ) : readyRender ? (
                   <>
-                    <CircleCheck size={12} className="text-pulse" />
-                    <span className="mono-meta text-mist">
+                    <CircleCheckGlyph style={{ width: 12, height: 12 }} />
+                    <span className="mono-meta" style={{ color: "#d7dfdb" }}>
                       {readyRender.quality === "mp3" ? "MP3" : `${readyRender.quality}P`}
                     </span>
-                    <Download size={12} className="text-pulse" />
+                    <DownloadGlyph style={{ width: 12, height: 12, color: "#8fe3b8" }} />
                   </>
                 ) : (
                   <>
-                    <Download size={12} className="text-acid" />
+                    <DownloadGlyph style={{ width: 12, height: 12, color: "#CDFCE2" }} />
                     Quality
-                    <ChevronDown size={11} className="text-ash" />
+                    <ChevronDown style={{ width: 11, height: 7, color: "#9db0a8" }} />
                   </>
                 )}
               </TapButton>
@@ -283,10 +311,11 @@ export function ClipCard({
 
               <TapButton
                 onClick={() => onQuality(clip)}
-                className="btn-ghost w-[34px] h-[34px] grid place-items-center"
+                className="btn-ghost grid place-items-center"
+                style={{ width: 34, height: 34 }}
                 aria-label="Download"
               >
-                <Download size={14} className="text-acid" />
+                <DownloadGlyph style={{ width: 15, height: 15, color: "#CDFCE2" }} />
               </TapButton>
 
               <TapButton
@@ -295,14 +324,19 @@ export function ClipCard({
                   else setConfirmDel(true);
                 }}
                 onBlur={() => setConfirmDel(false)}
-                className="w-[34px] h-[34px] rounded-[6px] grid place-items-center transition-colors"
+                className="grid place-items-center transition-colors"
                 style={{
-                  boxShadow: confirmDel ? "rgba(235,87,87,0.45) 0 0 0 1px inset" : "#23252A 0 0 0 1px inset",
+                  width: 34,
+                  height: 34,
+                  borderRadius: 12,
+                  boxShadow: confirmDel
+                    ? "inset 0 0 0 1px rgba(235,87,87,0.45)"
+                    : "inset 0 0 0 1px rgba(255,255,255,0.07)",
                   background: confirmDel ? "rgba(235,87,87,0.08)" : "transparent",
                 }}
                 aria-label={confirmDel ? "Confirm delete" : "Delete"}
               >
-                <Trash2 size={13} className={confirmDel ? "text-coral" : "text-ash"} />
+                <TrashGlyph style={{ width: 13, height: 13, color: confirmDel ? "#eb5757" : "#9db0a8" }} />
               </TapButton>
             </div>
           )}

@@ -3,9 +3,9 @@
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Toaster } from "sonner";
-import { BackgroundFX } from "./BackgroundFX";
+import { OpalMark } from "./icons";
 import { StatusBar } from "./StatusBar";
-import { TabBar } from "./TabBar";
+import { NavBar } from "./NavBar";
 import { HomeScreen } from "./HomeScreen";
 import { VideoScreen } from "./VideoScreen";
 import { QueueScreen } from "./QueueScreen";
@@ -23,31 +23,18 @@ export function OpalApp() {
   }, []);
 
   return (
-    <div className="min-h-dvh w-full grid place-items-center" style={{ background: "#08090A" }}>
-      {/* ambient acid-lime atmosphere behind the phone (desktop) */}
+    <div className="opal-stage min-h-dvh w-full">
+      {/* ===== the app (mobile-first frame, phone shell on desktop) ===== */}
       <div
-        className="fixed inset-0 pointer-events-none hidden md:block"
+        className="opal-phone relative w-full max-w-[430px] h-dvh md:h-[min(900px,calc(100dvh-36px))] md:my-4 md:rounded-[52px] flex flex-col overflow-hidden"
         style={{
-          background:
-            "radial-gradient(ellipse 55% 40% at 50% 22%, rgba(228,242,34,0.05) 0%, transparent 60%), radial-gradient(ellipse 50% 40% at 68% 82%, rgba(228,242,34,0.025) 0%, transparent 65%)",
-        }}
-      />
-      {/* precision grid floor, fading up (desktop) */}
-      <div
-        className="fixed inset-x-0 bottom-0 h-[46vh] pointer-events-none hidden md:block grid-floor"
-        style={{ maskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent)", WebkitMaskImage: "linear-gradient(to top, rgba(0,0,0,0.9), transparent)" }}
-      />
-
-      {/* ===== the app (mobile-first frame) ===== */}
-      <div
-        className="relative w-full max-w-[430px] h-dvh md:h-[min(920px,96dvh)] md:rounded-[40px] md:my-4 overflow-hidden flex flex-col md:border"
-        style={{
-          borderColor: "#23252A",
-          background: "#08090A",
-          boxShadow: "rgba(8,9,10,0.7) 0 40px 120px, #383B3F 0 0 0 1px",
+          ["boxShadow" as string]:
+            "0 0 0 1.5px rgba(255,255,255,0.09), 0 0 0 10px #0a0c0b, 0 0 0 11px rgba(255,255,255,0.07), 0 34px 90px -18px rgba(0,0,0,0.9), 0 0 130px -30px rgba(120,255,205,0.22)",
         }}
       >
-        <BackgroundFX />
+        {/* cave atmosphere — drifting mint breath over the stone gradient */}
+        <div aria-hidden="true" className="opal-cave" />
+
         <StatusBar />
 
         {/* content area */}
@@ -65,13 +52,14 @@ export function OpalApp() {
                 className="flex-1 overflow-y-auto opal-scroll"
               >
                 {!loaded && (
-                  <div className="absolute inset-0 grid place-items-center z-10" style={{ background: "#08090A" }}>
+                  <div className="absolute inset-0 grid place-items-center z-10" style={{ background: "#0b0e0d" }}>
                     <motion.div
-                      animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }}
+                      animate={{ scale: [1, 1.12, 1], opacity: [0.5, 1, 0.5] }}
                       transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
-                      className="w-2.5 h-2.5 rounded-[3px]"
-                      style={{ background: "#E4F222", boxShadow: "0 0 20px rgba(228,242,34,0.7)" }}
-                    />
+                      style={{ color: "#CDFCE2", filter: "drop-shadow(0 0 14px rgba(183,247,230,0.6))" }}
+                    >
+                      <OpalMark style={{ width: 30, height: 38 }} strokeWidth={2.4} />
+                    </motion.div>
                   </div>
                 )}
                 {tab === "home" && <HomeScreen />}
@@ -82,7 +70,12 @@ export function OpalApp() {
           </AnimatePresence>
         </div>
 
-        <TabBar />
+        <NavBar />
+
+        {/* whisper grain over everything */}
+        <div aria-hidden="true" className="absolute inset-0 pointer-events-none z-30" style={{ borderRadius: "inherit" }}>
+          <div className="noise-quiet absolute inset-0" style={{ borderRadius: "inherit" }} />
+        </div>
       </div>
 
       <Toaster
@@ -90,11 +83,11 @@ export function OpalApp() {
         theme="dark"
         toastOptions={{
           style: {
-            background: "rgba(15,16,17,0.92)",
-            border: "1px solid #23252A",
+            background: "rgba(16,18,17,0.92)",
+            border: "1px solid #2b302e",
             color: "#FFFFFF",
             backdropFilter: "blur(20px)",
-            borderRadius: "12px",
+            borderRadius: "16px",
             fontFamily: "inherit",
             fontSize: "13.5px",
             letterSpacing: "-0.011em",

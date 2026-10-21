@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import { Loader2 } from "lucide-react";
+import { TapButton } from "./TapButton";
 import {
   ChevronLeft,
-  Scissors,
-  Sparkles,
-  Trash2,
-  CircleCheck,
-  CircleX,
-  Clock3,
-  BadgeCheck,
-} from "lucide-react";
-import { TapButton } from "./TapButton";
+  CircleCheckGlyph,
+  CircleXGlyph,
+  ClockGlyph,
+  EllipsisIcon,
+  PlayGlyph,
+  ScissorsGlyph,
+} from "./icons";
 import { useOpal } from "@/lib/clipper/store";
 import { parseTimestamps } from "@/lib/clipper/parse";
 import { fmtClock, type VideoInfo } from "@/lib/clipper/types";
@@ -51,66 +51,79 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
       exit={{ x: "100%" }}
       transition={{ type: "spring", stiffness: 320, damping: 34 }}
       className="absolute inset-0 z-30 flex flex-col"
-      style={{ background: "#08090A" }}
+      style={{ background: "linear-gradient(180deg, #0b0e0d 0%, #0b0e0d 52%, #070a09 74%, #010504 100%)" }}
     >
       {/* scrollable content */}
       <div className="flex-1 overflow-y-auto opal-scroll">
-        {/* nav + mono stage tracker */}
+        {/* nav + stage tracker */}
         <div
           className="sticky top-0 z-10 flex items-center justify-between px-4 pt-4 pb-3"
-          style={{ background: "linear-gradient(to bottom, #08090A 55%, transparent)" }}
+          style={{ background: "linear-gradient(to bottom, #0b0e0d 55%, transparent)" }}
         >
           <TapButton
             onClick={popScreen}
-            className="flex items-center gap-1 text-[13.5px] text-mist hover:text-paper transition-colors -ml-1 p-1"
+            className="flex items-center gap-1 p-1 -ml-1 text-[13.5px]"
+            style={{ color: "#d7dfdb" }}
           >
-            <ChevronLeft size={17} />
+            <ChevronLeft style={{ width: 17, height: 17 }} />
             Home
           </TapButton>
           <div className="flex items-center gap-1.5">
             {STAGES.map((s, i) => (
               <div key={s} className="flex items-center gap-1.5">
-                <span className="mono-meta text-[9.5px]" style={{ color: i <= 1 ? "#E4F222" : "#62666D" }}>
+                <span className="mono-meta text-[9.5px]" style={{ color: i <= 1 ? "#CDFCE2" : "#9db0a8" }}>
                   {String(i + 1).padStart(2, "0")} {s}
                 </span>
-                {i < STAGES.length - 1 && <span className="w-1.5 h-px bg-graphite" />}
+                {i < STAGES.length - 1 && <span className="w-1.5 h-px" style={{ background: "#2b302e" }} />}
               </div>
             ))}
           </div>
         </div>
 
-        {/* video hero */}
+        {/* video hero — opal card surface */}
         <motion.div
           initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ type: "spring", stiffness: 140, damping: 20 }}
           className="px-5"
         >
-          <div className="surface-card p-3 flex gap-3.5">
+          <div className="opal-card p-3.5 flex gap-3.5" style={{ borderRadius: 28 }}>
             <img
               src={video.thumbnail}
               alt={video.title}
-              className="w-[128px] aspect-video rounded-[6px] object-cover"
-              style={{ boxShadow: "#383B3F 0 0 0 1px inset" }}
+              className="w-[128px] aspect-video object-cover"
+              style={{ borderRadius: 14, boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.09)" }}
             />
             <div className="flex-1 min-w-0 py-0.5">
-              <h2 className="text-[14.5px] text-paper leading-snug line-clamp-2" style={{ fontWeight: 510, letterSpacing: "-0.011em" }}>
+              <h2
+                className="text-[14.5px] leading-snug line-clamp-2"
+                style={{ color: "#ffffff", fontWeight: 510, letterSpacing: "-0.011em" }}
+              >
                 {video.title}
               </h2>
-              <p className="mt-1 text-[12px] text-fog truncate">{video.uploader || video.extractor}</p>
+              <p className="mt-1 text-[12px] truncate" style={{ color: "#9db0a8" }}>
+                {video.uploader || video.extractor}
+              </p>
               <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                <span className="inline-flex items-center gap-1 text-[10.5px] text-mist px-2 py-[3px] rounded-[4px]" style={{ background: "rgba(255,255,255,0.05)" }}>
-                  <Clock3 size={10} className="text-fog" /> <span className="mono-meta">{fmtClock(video.duration)}</span>
+                <span
+                  className="opal-chip inline-flex items-center gap-1.5 text-[10.5px] px-2.5 py-[4px]"
+                  style={{ borderRadius: 999, color: "#d7dfdb" }}
+                >
+                  <ClockGlyph style={{ width: 11, height: 11 }} />
+                  <span className="mono-meta">{fmtClock(video.duration)}</span>
                 </span>
                 {video.heights[0] && (
                   <span
-                    className="inline-flex items-center gap-1 text-[10.5px] px-2 py-[3px] rounded-[4px]"
-                    style={{ color: "#E4F222", background: "rgba(228,242,34,0.08)", boxShadow: "rgba(228,242,34,0.22) 0 0 0 1px inset" }}
+                    className="inline-flex items-center gap-1 text-[10.5px] px-2.5 py-[4px] mono-meta"
+                    style={{
+                      borderRadius: 999,
+                      color: "#CDFCE2",
+                      background: "rgba(183,247,230,0.08)",
+                      boxShadow: "inset 0 0 0 1px rgba(183,247,230,0.25)",
+                    }}
                   >
-                    <BadgeCheck size={10} />
-                    <span className="mono-meta">
-                      {video.heights[0] >= 2160 ? "4K " : video.heights[0] >= 1440 ? "2K " : ""}{video.heights[0]}p
-                    </span>
+                    {video.heights[0] >= 2160 ? "4K " : video.heights[0] >= 1440 ? "2K " : ""}
+                    {video.heights[0]}p
                   </span>
                 )}
               </div>
@@ -125,18 +138,21 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
           transition={{ type: "spring", stiffness: 130, damping: 20, delay: 0.06 }}
           className="px-5 mt-4"
         >
-          <div className="surface-card p-5">
+          <div className="opal-card p-5" style={{ borderRadius: 28 }}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <Sparkles size={12} className="text-acid" strokeWidth={2} />
-                <span className="mono-meta text-[10.5px] text-fog">TIMESTAMPS — BULK OK</span>
+                <ScissorsGlyph style={{ width: 13, height: 13 }} />
+                <span className="mono-meta text-[10.5px]" style={{ color: "#9db0a8" }}>
+                  TIMESTAMPS — BULK OK
+                </span>
               </div>
               {ranges.length > 0 && (
                 <span
-                  className="mono-meta text-[11px] px-2 py-[3px] rounded-[4px]"
+                  className="mono-meta text-[11px] px-2.5 py-[3px]"
                   style={{
-                    color: valid.length ? "#E4F222" : "#EB5757",
-                    background: valid.length ? "rgba(228,242,34,0.08)" : "rgba(235,87,87,0.08)",
+                    borderRadius: 999,
+                    color: valid.length ? "#CDFCE2" : "#eb5757",
+                    background: valid.length ? "rgba(183,247,230,0.08)" : "rgba(235,87,87,0.08)",
                   }}
                 >
                   {valid.length}/{ranges.length}
@@ -144,10 +160,10 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
               )}
             </div>
 
-            <h3 className="mt-3 text-[19px] text-paper type-sub" style={{ fontWeight: 510 }}>
+            <h3 className="mt-3 text-[19px]" style={{ color: "#ffffff", fontWeight: 510, letterSpacing: "-0.02em" }}>
               Yaha se — yaha tak?
             </h3>
-            <p className="mt-1 text-[12.5px] text-fog leading-relaxed">
+            <p className="mt-1 text-[12.5px] leading-relaxed" style={{ color: "#9db0a8" }}>
               One range per line (or comma-separated). Minutes:seconds, h:mm:ss, or plain seconds.
             </p>
 
@@ -157,12 +173,12 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
               placeholder={examples}
               rows={4}
               spellCheck={false}
-              className="mt-3.5 w-full rounded-[6px] px-3.5 py-3 text-paper placeholder:text-ash/70 bg-transparent outline-none resize-none opal-scroll mono-meta text-[13px] leading-relaxed"
-              style={{ background: "rgba(255,255,255,0.02)", boxShadow: "rgba(255,255,255,0.08) 0 0 0 1px inset" }}
+              className="opal-input opal-placeholder mt-3.5 w-full px-4 py-3 outline-none resize-none opal-scroll mono-meta text-[13px] leading-relaxed"
+              style={{ borderRadius: 16, color: "#ffffff", caretColor: "#CDFCE2" }}
               aria-label="Timestamps"
             />
 
-            {/* parsed rows — mono metadata */}
+            {/* parsed rows */}
             {ranges.length > 0 && (
               <div className="mt-3 flex flex-col gap-1.5 max-h-56 overflow-y-auto opal-scroll pr-1">
                 {ranges.map((r) => (
@@ -171,28 +187,31 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
                     initial={{ opacity: 0, x: -12 }}
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ type: "spring", stiffness: 380, damping: 28 }}
-                    className="flex items-center gap-2.5 rounded-[6px] px-3 py-2"
+                    className="opal-chip flex items-center gap-2.5 px-3.5 py-2.5"
                     style={{
-                      background: "rgba(255,255,255,0.02)",
-                      boxShadow:
-                        r.error
-                          ? "rgba(235,87,87,0.35) 0 0 0 1px inset"
-                          : "#23252A 0 0 0 1px inset",
+                      borderRadius: 16,
+                      boxShadow: r.error
+                        ? "inset 0 0 0 1px rgba(235,87,87,0.4)"
+                        : "inset 0 0 0 1px rgba(255,255,255,0.06)",
                     }}
                   >
                     {r.error ? (
-                      <CircleX size={14} className="text-coral shrink-0" />
+                      <CircleXGlyph style={{ width: 15, height: 15, flex: "none" }} />
                     ) : (
-                      <CircleCheck size={14} className="text-pulse shrink-0" />
+                      <CircleCheckGlyph style={{ width: 15, height: 15, flex: "none" }} />
                     )}
-                    <span className="mono-meta text-[10px] text-ash w-6">{String(r.index + 1).padStart(2, "0")}</span>
-                    <span className="mono-meta text-[12.5px] text-mist">
-                      {fmtClock(r.start)} <span className="text-ash">→</span> {fmtClock(r.end)}
+                    <span className="mono-meta text-[10px] w-6" style={{ color: "#9db0a8" }}>
+                      {String(r.index + 1).padStart(2, "0")}
+                    </span>
+                    <span className="mono-meta text-[12.5px]" style={{ color: "#d7dfdb" }}>
+                      {fmtClock(r.start)} <span style={{ color: "#9db0a8" }}>→</span> {fmtClock(r.end)}
                     </span>
                     {r.error ? (
-                      <span className="ml-auto text-[11px] text-coral">{r.error}</span>
+                      <span className="ml-auto text-[11px]" style={{ color: "#eb5757" }}>
+                        {r.error}
+                      </span>
                     ) : (
-                      <span className="ml-auto mono-meta text-[11px] text-acid">
+                      <span className="ml-auto mono-meta text-[11px]" style={{ color: "#CDFCE2" }}>
                         {(r.end - r.start).toFixed(1)}s
                       </span>
                     )}
@@ -201,7 +220,11 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
               </div>
             )}
 
-            {error && <p className="mt-2.5 text-[12.5px] text-coral">{error}</p>}
+            {error && (
+              <p className="mt-2.5 text-[12.5px]" style={{ color: "#eb5757" }}>
+                {error}
+              </p>
+            )}
           </div>
         </motion.div>
 
@@ -212,8 +235,10 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
           transition={{ delay: 0.12 }}
           className="flex items-center gap-2 justify-center mt-4 px-8"
         >
-          <span className="w-1 h-1 rounded-full bg-graphite" />
-          <p className="mono-meta text-[10.5px] text-ash">jitne timestamps, utne clips — ek saath cut honge</p>
+          <EllipsisIcon style={{ width: 17, height: 4, color: "rgba(157,176,168,0.5)" }} />
+          <p className="text-[10.5px]" style={{ color: "#9db0a8" }}>
+            jitne timestamps, utne clips — ek saath cut honge
+          </p>
         </motion.div>
 
         {/* spacer for fixed CTA */}
@@ -224,26 +249,32 @@ export function VideoScreen({ video }: { video: VideoInfo }) {
       <div
         className="absolute bottom-0 inset-x-0 px-5 pb-6 pt-4"
         style={{
-          background: "linear-gradient(to top, #08090A 30%, rgba(8,9,10,0.88) 70%, transparent)",
+          background: "linear-gradient(to top, #070a09 30%, rgba(7,10,9,0.88) 70%, transparent)",
           backdropFilter: "blur(14px)",
         }}
       >
         <TapButton
           disabled={!valid.length || cutting}
           onClick={onCut}
-          className="btn-acid acid-sweep w-full h-[50px] text-[15px] flex items-center justify-center gap-2"
+          className="opal-cta w-full gap-2.5"
+          style={{ height: 50, borderRadius: 25, fontSize: 15.5 }}
         >
           {cutting ? (
-            "Starting…"
+            <>
+              <Loader2 size={16} className="animate-spin" style={{ color: "#CDFCE2" }} />
+              <span className="t-button" style={{ fontSize: 15.5 }}>Starting…</span>
+            </>
           ) : valid.length ? (
             <>
-              <Scissors size={16} strokeWidth={2.2} />
-              Cut {valid.length} Clip{valid.length > 1 ? "s" : ""}
+              <ScissorsGlyph style={{ width: 15, height: 15 }} />
+              <span className="t-button" style={{ fontSize: 15.5 }}>
+                Cut {valid.length} Clip{valid.length > 1 ? "s" : ""}
+              </span>
             </>
           ) : (
             <>
-              <Trash2 size={15} className="opacity-0" />
-              Add timestamps to cut
+              <span style={{ width: 15, height: 15, opacity: 0 }} />
+              <span className="t-button" style={{ fontSize: 15.5 }}>Add timestamps to cut</span>
             </>
           )}
         </TapButton>

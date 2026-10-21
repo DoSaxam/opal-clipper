@@ -1,8 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { BatteryIcon, SignalBars, WifiIcon } from "./icons";
 
-/** iOS-style status bar (fake time, signal/wifi/battery glyphs). Desktop-only. */
+/**
+ * iOS status bar — traced from the reference:
+ * time centred like a dynamic-island layout, icons optically centred on y ≈ 29.
+ * Shows the real local time (updates every 10s). Desktop-only (hidden on touch).
+ */
 export function StatusBar() {
   const [time, setTime] = useState("");
 
@@ -21,34 +27,37 @@ export function StatusBar() {
 
   return (
     <div
-      className="opal-statusbar relative z-10 flex items-center justify-between px-8 pt-3 pb-1 text-[13px] font-medium text-mist select-none"
-      style={{ letterSpacing: "-0.01em" }}
+      className="opal-statusbar relative z-10 flex items-center justify-between select-none"
+      style={{ left: 0, top: 0, width: "100%", height: 54 }}
       aria-hidden
     >
-      <span className="tabular-nums">{time}</span>
-      {/* dynamic island hint */}
-      <div className="w-24 h-[26px] rounded-full" style={{ background: "#050506" }} />
-      <div className="flex items-center gap-1.5">
-        {/* signal */}
-        <svg width="17" height="11" viewBox="0 0 17 11" fill="currentColor">
-          <rect x="0" y="7" width="3" height="4" rx="1" />
-          <rect x="4.6" y="5" width="3" height="6" rx="1" />
-          <rect x="9.2" y="2.5" width="3" height="8.5" rx="1" />
-          <rect x="13.8" y="0" width="3" height="11" rx="1" />
-        </svg>
-        {/* wifi */}
-        <svg width="16" height="11" viewBox="0 0 16 12" fill="none" stroke="currentColor" strokeWidth="1.6">
-          <path d="M1 4.2C4.6 0.9 11.4 0.9 15 4.2" strokeLinecap="round" />
-          <path d="M3.6 7C6 4.9 10 4.9 12.4 7" strokeLinecap="round" />
-          <circle cx="8" cy="9.9" r="1.2" fill="currentColor" stroke="none" />
-        </svg>
-        {/* battery */}
-        <div className="flex items-center gap-0.5">
-          <div className="w-[22px] h-[11px] rounded-[3.5px] border border-mist/45 p-[1.5px]">
-            <div className="w-[72%] h-full rounded-[2px] bg-acid" />
-          </div>
-          <div className="w-[1.5px] h-[4px] rounded-r bg-mist/45" />
-        </div>
+      <motion.span
+        initial={{ opacity: 0, y: -4 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1], delay: 0.05 }}
+        style={{
+          position: "absolute",
+          left: "50%",
+          transform: "translateX(-50%)",
+          top: 22,
+          fontSize: 17.4,
+          fontWeight: 600,
+          letterSpacing: "-0.2px",
+          lineHeight: 1,
+          color: "#fff",
+          fontVariantNumeric: "tabular-nums",
+        }}
+      >
+        {time}
+      </motion.span>
+
+      <div
+        className="flex items-center"
+        style={{ position: "absolute", right: 36, top: 23, gap: 6.5, color: "#fff" }}
+      >
+        <SignalBars style={{ width: 20, height: 12 }} />
+        <WifiIcon style={{ width: 17, height: 12.4, marginTop: -1 }} />
+        <BatteryIcon style={{ width: 27, height: 13, marginLeft: 1 }} />
       </div>
     </div>
   );

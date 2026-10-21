@@ -2,7 +2,7 @@
 
 import { motion, useSpring, useTransform } from "framer-motion";
 
-/** Acid-lime progress ring with springy stroke. */
+/** Mint capsule-glow progress ring with springy stroke. */
 export function ProgressRing({
   progress,
   size = 46,
@@ -26,17 +26,20 @@ export function ProgressRing({
   return (
     <div className="relative grid place-items-center" style={{ width: size, height: size }}>
       <svg width={size} height={size} className="-rotate-90">
-        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#23252A" strokeWidth={stroke} />
+        <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#191e1c" strokeWidth={stroke} />
         <motion.circle
           cx={size / 2}
           cy={size / 2}
           r={r}
           fill="none"
-          stroke={active ? "#E4F222" : "#383B3F"}
+          stroke={active ? "#CDFCE2" : "#3b423f"}
           strokeWidth={stroke}
           strokeLinecap="round"
           strokeDasharray={c}
-          style={{ strokeDashoffset: offset }}
+          style={{
+            strokeDashoffset: offset,
+            filter: active ? "drop-shadow(0 0 4px rgba(183,247,230,0.5))" : "none",
+          }}
         />
       </svg>
       <div className="absolute inset-0 grid place-items-center">{children}</div>

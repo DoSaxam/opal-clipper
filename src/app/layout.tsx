@@ -1,6 +1,15 @@
 import type { Metadata, Viewport } from "next";
+import localFont from "next/font/local";
 import { Toaster } from "@/components/ui/toaster";
 import "./globals.css";
+
+const inter = localFont({
+  src: [{ path: "../../public/fonts/Inter.woff2", weight: "300 800", style: "normal" }],
+  variable: "--font-inter",
+  display: "block",
+  fallback: ["-apple-system", "BlinkMacSystemFont", "Segoe UI", "sans-serif"],
+  preload: true,
+});
 
 export const metadata: Metadata = {
   title: "Opal — Video Clip Cutter",
@@ -8,7 +17,8 @@ export const metadata: Metadata = {
     "Paste any video link, give timestamps, get frame-accurate clips. Premium quality downloads with quality selection and bulk ZIP export.",
   keywords: ["video clipper", "youtube clips", "timestamp cutter", "bulk download"],
   icons: {
-    icon: "/gem-icon.svg",
+    icon: "/icon.png",
+    apple: "/icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -18,7 +28,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#08090A",
+  themeColor: "#0b0e0d",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -32,17 +42,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <head>
-        {/* Inter Variable — primary UI typeface (Linear identity) */}
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=JetBrains+Mono:wght@400;500&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="antialiased" style={{ background: "#08090A" }}>
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="antialiased" style={{ background: "#040605" }}>
         {children}
         <Toaster />
       </body>
