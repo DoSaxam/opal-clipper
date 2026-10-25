@@ -1,6 +1,6 @@
 {
   "name": "opal-clipper",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "private": true,
   "description": "Opal \u2014 Video Clip Cutter. Paste any video link, give timestamps, get frame-accurate clips up to 4K with bulk download.",
   "scripts": {

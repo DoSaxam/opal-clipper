@@ -89,6 +89,34 @@ export function audioCopySafe(fmt?: StreamFormat | null): boolean {
   return fmt.ext === "m4a" || /mp4a|aac/i.test(fmt.acodec || "");
 }
 
+/** How the audio of a produced file relates to the source video's own track. */
+export type AudioMode = "original" | "reencoded" | "none";
+
+export interface CutResult {
+  audioMode: AudioMode;
+  /** Short human label of the audio actually inside the file (e.g. "AAC 128k"). */
+  audioLabel?: string;
+}
+
+/** "AAC 128k"-style label for the audio stream we actually fed to the muxer. */
+function audioCodecLabel(fmt?: StreamFormat | null): string {
+  if (!fmt) return "";
+  const c = fmt.acodec || "";
+  const codec = /mp4a|aac/i.test(c)
+    ? "AAC"
+    : /opus/i.test(c)
+      ? "OPUS"
+      : /vorbis/i.test(c)
+        ? "VORBIS"
+        : /mp3/i.test(c)
+          ? "MP3"
+          : c
+            ? c.split(".")[0].toUpperCase()
+            : "AUDIO";
+  const abr = fmt.abr ? ` ${Math.round(fmt.abr)}k` : "";
+  return `${codec}${abr}`;
+}
+
 function ffmpeg(
   args: string[],
   opts: {
@@ -230,7 +258,10 @@ function buildCutArgs(
     // ORIGINAL AUDIO TRACK — stream copy, zero re-encode, zero quality loss.
     args.push("-c:a", "copy");
   } else {
-    args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000");
+    // last-resort fallback (non-AAC source codec that mp4 can't hold): transparent
+    // AAC encode at the SOURCE's own sample rate — never resample, never merge a
+    // synthetic track; this is still the original recording, just re-packaged.
+    args.push("-c:a", "aac", "-b:a", "192k");
   }
   args.push("-movflags", "+faststart");
   args.push(outPath);
@@ -238,17 +269,26 @@ function buildCutArgs(
 }
 
 /**
- * Cut a clip. The ORIGINAL audio track is stream-copied when the source audio
- * is AAC (YouTube's m4a) — bit-perfect, no re-encode. Retries with a fresh
- * URLs if stream links went stale (403), and falls back to AAC re-encode if a
- * raw copy turns out to be unmuxable.
+ * Cut a clip. The ORIGINAL AUDIO TRACK is the top priority at every retry
+ * level: the audio stream YouTube serves (m4a/AAC) is muxed over with
+ * `-c:a copy` — bit-for-bit the same track that plays on the source video,
+ * never re-encoded, never resampled, never replaced with a synthetic one.
+ *
+ * Retry ladder (IMPORTANT — no silent downgrades):
+ *   1. copy on the current stream URLs
+ *   2. STALE URL error (403/401/… googlevideo links are IP-locked and expire)
+ *      → refresh URLs and COPY AGAIN (original audio preserved — a stale URL
+ *      is a transport problem, NOT a reason to re-encode the audio)
+ *   3. GENUINE mux failure only (codec can't live in mp4 — only possible for
+ *      non-AAC sources) → transparent AAC re-encode of the SAME source track
+ *   4. re-encode that hits a stale URL → refresh and finish the re-encode
  */
 export async function cutClip(
   entry: FormatCacheEntry,
   opts: CutOptions,
   getFresh: () => Promise<FormatCacheEntry>
-): Promise<void> {
-  const attempt = async (e: FormatCacheEntry, copyAudio: boolean) => {
+): Promise<CutResult> {
+  const attempt = async (e: FormatCacheEntry, copyAudio: boolean): Promise<CutResult> => {
     const { start, end, height } = opts;
     const video = pickVideoFormat(e, height ?? null);
     const audio = pickAudioFormat(e);
@@ -286,6 +326,13 @@ export async function cutClip(
     if (outDur <= 0.2 * dur) {
       throw new Error("Output clip looks empty — stream may have moved.");
     }
+
+    // Report EXACTLY what audio ended up in the file.
+    const audioSrc =
+      video && audio ? audio : !video && combined ? combined : null;
+    if (!audioSrc) return { audioMode: "none" };
+    if (!copyAudio) return { audioMode: "reencoded", audioLabel: "AAC 192k" };
+    return { audioMode: "original", audioLabel: audioCodecLabel(audioSrc) };
   };
 
   // original-audio decision: the stream actually feeding audio into the muxer
@@ -298,32 +345,59 @@ export async function cutClip(
     return false;
   };
 
-  const stale = (m: string) => /403|401|expired|gone|empty|moved/i.test(m);
+  // Stale/broken TRANSPORT (URLs expired or network blipped). The fix is fresh
+  // URLs — NOT re-encoding the audio. Note: the proxied audio URL contains
+  // "mime=audio/mp4", so stale errors routinely contain the word "audio" —
+  // matching on that word alone (old bug) silently downgraded clips to a
+  // re-encoded 192k track instead of the original one.
+  const stale = (m: string) =>
+    /\b40[134]\b|server returned|http error|expired|gone|empty|moved|connection|reset by peer|unable to open|input\/output error|invalid data|temporarily/i.test(
+      m
+    );
+
+  // GENUINE "this codec cannot be stream-copied into mp4" muxer failures.
+  const muxFail = (m: string) =>
+    /could not find tag for codec|monotonic|operation not permitted|could not write header|incompatible|error initializing|only .* in .* experimental|muxer/i.test(
+      m
+    );
+
+  const runCopy = async (e: FormatCacheEntry): Promise<CutResult> => {
+    try {
+      return await attempt(e, planCopy(e));
+    } catch (err) {
+      const msg = (err as Error).message || "";
+      if (planCopy(e) && muxFail(msg)) {
+        // codec genuinely can't be copied into mp4 → transparent AAC of the same track
+        return attempt(e, false);
+      }
+      if (stale(msg)) throw err; // bubble to the refresh handler below
+      throw err;
+    }
+  };
 
   try {
-    await attempt(entry, planCopy(entry));
+    // 1+2: copy now; if URLs went stale, refresh and COPY AGAIN (original kept)
+    return await runCopy(entry);
   } catch (err) {
     const msg = (err as Error).message || "";
-    // audio copy unmuxable → retry the SAME entry with an AAC encode
-    if (planCopy(entry) && /audio|codec|mux|monotonic|invalid data|could not write|Operation not permitted/i.test(msg)) {
+    if (!stale(msg)) throw err;
+    const fresh = await getFresh(); // refreshFormats()
+    try {
+      return await runCopy(fresh);
+    } catch (err2) {
+      const m2 = (err2 as Error).message || "";
+      if (!stale(m2)) throw err2;
+      // still stale — one more refresh; keep the original-copy if at all possible,
+      // and only drop to a re-encode on a GENUINE mux failure (never on a
+      // timeout/network error — that would just double the wait for nothing)
+      const fresh2 = await getFresh();
       try {
-        await attempt(entry, false);
-        return;
-      } catch (err2) {
-        const m2 = (err2 as Error).message || "";
-        if (stale(m2)) {
-          await attempt(await getFresh(), false);
-        } else {
-          throw err2;
-        }
-        return;
+        return await runCopy(fresh2);
+      } catch (err3) {
+        const m3 = (err3 as Error).message || "";
+        if (muxFail(m3)) return attempt(fresh2, false);
+        throw err3;
       }
-    }
-    if (stale(msg)) {
-      const fresh = await getFresh(); // refreshFormats()
-      await attempt(fresh, planCopy(fresh));
-    } else {
-      throw err;
     }
   }
 }

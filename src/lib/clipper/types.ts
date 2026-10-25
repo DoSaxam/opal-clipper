@@ -14,6 +14,9 @@ export interface VideoInfo {
 
 export type ClipStatus = "queued" | "cutting" | "ready" | "error";
 
+/** How the clip's audio relates to the source video's own track. */
+export type AudioMode = "original" | "reencoded" | "none";
+
 export interface Clip {
   id: string;
   videoId: string;
@@ -27,6 +30,10 @@ export interface Clip {
   hasPreview: boolean;
   hasPoster: boolean;
   renderedQualities: string[];
+  /** audio of preview.mp4: "original" = bit-for-bit the source video's own track */
+  audioMode?: AudioMode;
+  /** e.g. "AAC 128k" — the audio actually inside the file */
+  audioLabel?: string;
   /** REAL size of preview.mp4 on disk (bytes) — shown in the embedded preview. */
   previewBytes?: number;
 }
@@ -44,6 +51,9 @@ export interface RenderJob {
   createdAt: number;
   /** REAL size of the rendered file on disk (bytes). */
   sizeBytes?: number;
+  /** audio of the rendered file (undefined for MP3 exports — audio-only) */
+  audioMode?: AudioMode;
+  audioLabel?: string;
 }
 
 export interface TunnelStatus {

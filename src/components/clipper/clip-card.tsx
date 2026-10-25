@@ -34,6 +34,19 @@ export function ClipCard({ clip, index, color }: { clip: Clip; index: number; co
   const busyRender = !!render && (render.status === "queued" || render.status === "rendering");
   const readyRender = !!render && render.status === "ready";
 
+  // TRUTHFUL audio badge — driven by what actually happened in the cutter:
+  // "original" = the source video's own track, stream-copied bit-for-bit.
+  const audioChip =
+    clip.audioMode === "original"
+      ? `ORIGINAL AUDIO${clip.audioLabel ? ` · ${clip.audioLabel}` : ""}`
+      : clip.audioMode === "reencoded"
+        ? `AUDIO · ${clip.audioLabel || "AAC 192k"}`
+        : clip.audioMode === "none"
+          ? "NO AUDIO"
+          : "AUDIO";
+  const renderAudioNote =
+    render?.audioMode === "reencoded" || clip.audioMode === "reencoded" ? "AAC audio" : "original audio";
+
   const play = () => {
     const v = videoRef.current;
     if (!v) return;
@@ -44,7 +57,8 @@ export function ClipCard({ clip, index, color }: { clip: Clip; index: number; co
   const onDownload = () => {
     if (readyRender && render) {
       downloadRender(render.id);
-      toast(`Downloading ${tierLabel(q)} · ${fmtBytes(render.sizeBytes)}`);
+      const audioNote = render.audioMode === "original" ? " · original audio" : "";
+      toast(`Downloading ${tierLabel(q)} · ${fmtBytes(render.sizeBytes)}${audioNote}`);
       return;
     }
     if (busyRender) {
@@ -121,7 +135,7 @@ export function ClipCard({ clip, index, color }: { clip: Clip; index: number; co
             </div>
             <div className="pchips">
               <span className="pchip">
-                <Music className="lucide" /> ORIGINAL AUDIO
+                <Music className="lucide" /> {audioChip}
               </span>
               <span className="pchip">PREVIEW {fmtBytes(clip.previewBytes)}</span>
             </div>
@@ -142,7 +156,8 @@ export function ClipCard({ clip, index, color }: { clip: Clip; index: number; co
           {readyRender && render ? (
             <div className="meta one" style={{ margin: "2px 0 0" }}>
               <span className="qstat ready">
-                {tierLabel(q).toUpperCase()} · {fmtBytes(render.sizeBytes)} READY
+                {tierLabel(q).toUpperCase()} · {fmtBytes(render.sizeBytes)}
+                {render.audioMode === "original" ? " · ORIGINAL AUDIO" : ""} READY
               </span>
             </div>
           ) : null}
@@ -155,9 +170,7 @@ export function ClipCard({ clip, index, color }: { clip: Clip; index: number; co
                 <i style={{ width: `${Math.floor(render.progress)}%` }} />
               </div>
               <div className="meta">
-                <span>
-                  Rendering {tierLabel(q)} · original audio…
-                </span>
+                <span>Rendering {tierLabel(q)} · {renderAudioNote}…</span>
                 <span>{Math.floor(render.progress)}%</span>
               </div>
             </>

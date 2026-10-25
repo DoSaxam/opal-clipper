@@ -104,7 +104,7 @@ export function enqueueClipCut(clip: Clip) {
       const posterPath = path.join(dir, "poster.jpg");
 
       updateClip(clip.id, { status: "cutting", stage: "Cutting preview", progress: 10 });
-      await cutClip(entry, {
+      const cut = await cutClip(entry, {
         videoId: clip.videoId,
         sourceUrl: video.sourceUrl,
         start: clip.start,
@@ -130,6 +130,8 @@ export function enqueueClipCut(clip: Clip) {
         hasPreview: true,
         hasPoster: posterOk,
         error: undefined,
+        audioMode: cut.audioMode,
+        audioLabel: cut.audioLabel,
       });
     } catch (e) {
       updateClip(clip.id, {
@@ -171,13 +173,18 @@ export function enqueueRender(render: RenderJob) {
 
       if (isMp3) {
         await renderMp3(entry, opts, getFresh);
+        updateRender(render.id, { status: "ready", progress: 100 });
       } else {
-        await cutClip(entry, { ...opts, height }, getFresh);
+        const cut = await cutClip(entry, { ...opts, height }, getFresh);
         // zero-base the timeline of the downloadable file too (same reason as preview)
         await normalizeTs(outPath);
+        updateRender(render.id, {
+          status: "ready",
+          progress: 100,
+          audioMode: cut.audioMode,
+          audioLabel: cut.audioLabel,
+        });
       }
-
-      updateRender(render.id, { status: "ready", progress: 100 });
       const c = getClip(clip.id);
       if (c && !c.renderedQualities.includes(render.quality)) {
         updateClip(clip.id, { renderedQualities: [...c.renderedQualities, render.quality] });
