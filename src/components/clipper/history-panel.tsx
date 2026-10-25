@@ -1,23 +1,36 @@
 "use client";
 
+import { useSyncExternalStore } from "react";
 import { History, Trash2 } from "lucide-react";
 import { useOpal } from "@/lib/clipper/store";
 import { fmtBytes, fmtClock, fmtDate } from "@/lib/clipper/types";
 import { tierLabel } from "@/lib/clipper/qualities";
 import { toast } from "./toast";
 
+const noopSubscribe = () => () => {};
+
+/** false during SSR + hydration, true after mount (localStorage is client-only). */
+function useHydrated() {
+  return useSyncExternalStore(
+    noopSubscribe,
+    () => true,
+    () => false
+  );
+}
+
 /**
  * Browser-local clip history (localStorage only — never sent to any server).
  * LIVE entries can be reopened on the clips screen while the temporary server
- * still holds them.
+ * still holds them. Rendered only after hydration (history is client-only data).
  */
 export function HistoryPanel() {
+  const hydrated = useHydrated();
   const history = useOpal((s) => s.history);
   const clips = useOpal((s) => s.clips);
   const clearHistory = useOpal((s) => s.clearHistory);
   const openVideo = useOpal((s) => s.openVideo);
 
-  if (!history.length) return null;
+  if (!hydrated || !history.length) return null;
 
   return (
     <section className="sect">
