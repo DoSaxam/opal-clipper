@@ -27,6 +27,8 @@ export interface Clip {
   hasPreview: boolean;
   hasPoster: boolean;
   renderedQualities: string[];
+  /** REAL size of preview.mp4 on disk (bytes) — shown in the embedded preview. */
+  previewBytes?: number;
 }
 
 export type RenderStatus = "queued" | "rendering" | "ready" | "error";
@@ -40,6 +42,8 @@ export interface RenderJob {
   error?: string;
   fileName?: string;
   createdAt: number;
+  /** REAL size of the rendered file on disk (bytes). */
+  sizeBytes?: number;
 }
 
 export interface TunnelStatus {
@@ -59,6 +63,29 @@ export interface AppStateResponse {
   tunnel: TunnelStatus;
 }
 
+/**
+ * Browser-local clip history entry. The server is temporary — this record is
+ * the ONLY thing that persists (in the user's own browser via localStorage).
+ */
+export type HistoryStatus = "live" | "expired";
+
+export interface HistoryEntry {
+  id: string; // clip id
+  videoId: string;
+  title: string;
+  uploader: string;
+  thumbnail: string;
+  sourceUrl: string;
+  start: number;
+  end: number;
+  createdAt: number;
+  status: HistoryStatus;
+  /** last downloaded quality + its REAL size (set when the user downloads) */
+  lastQuality?: string;
+  lastSizeBytes?: number;
+  downloadedAt?: number;
+}
+
 export function fmtClock(sec: number): string {
   const s = Math.floor(sec);
   const h = Math.floor(s / 3600);
@@ -73,4 +100,30 @@ export function fmtDur(sec: number): string {
   const m = Math.floor(sec / 60);
   const s = Math.round(sec % 60);
   return s ? `${m}m ${s}s` : `${m}m`;
+}
+
+/** REAL byte size → human text ("12.4 MB", "1.42 GB"). "—" when unknown. */
+export function fmtBytes(n?: number): string {
+  if (n == null || !Number.isFinite(n) || n <= 0) return "—";
+  if (n < 1024) return `${n} B`;
+  const kb = n / 1024;
+  if (kb < 1024) return `${kb.toFixed(kb < 100 ? 1 : 0)} KB`;
+  const mb = kb / 1024;
+  if (mb < 1024) return `${mb.toFixed(mb < 100 ? 1 : 0)} MB`;
+  const gb = mb / 1024;
+  return `${gb.toFixed(2)} GB`;
+}
+
+/** Date label for history rows (e.g. "Oct 25, 01:24"). */
+export function fmtDate(ts: number): string {
+  try {
+    return new Date(ts).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return "";
+  }
 }

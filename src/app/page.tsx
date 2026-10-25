@@ -1,4 +1,4 @@
-import { OpalApp } from "@/components/clipper/OpalApp";
+import { OpalApp } from "@/components/clipper/app";
 
 export default function Page() {
   return <OpalApp />;

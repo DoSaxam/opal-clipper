@@ -63,3 +63,17 @@ Work Log:
 
 Stage Summary:
 - Root cause fixed (persistent yt-dlp), 4K/2K quality ladder live and source-aware, previews now 720p, all E2E green on both 4K and 1080p videos
+
+---
+## v2.0.0 — Opal Clipper UI (light/dark redesign)
+
+- FULL UI REBUILD to the user's "Opal Clipper" design: Manrope type, #ff5a2e accent, light default + dark mode (system + manual toggle, pre-paint theme script, zero flash)
+- 4-step wizard flow: Home (paste link) → Cut (timestamps + live timeline) → Progress (big % + per-clip bars) → Clips ready
+- Same working engine: analyze (yt-dlp via self-healing WARP), frame-accurate cuts, 240p–4K + MP3 renders, bulk ZIP — ZERO server code changes
+- ClipCard: embedded REAL preview player — custom scrub, SRC timestamp chip (original timeline: clip.start + currentTime, verified exact), ORIGINAL AUDIO badge, PREVIEW real bytes chip
+- Downloads strictly manual: (1) per-card download (renders on demand → ready → download), (2) Render all → Download ZIP (real total bytes), (3) select checkboxes → ZIP; delete selected also available
+- History panel: browser-local (localStorage, cap 300), LIVE/EXPIRED pills, download stamps (quality + real size + date), click LIVE entry → reopen clips
+- Quality chips: source-aware ladder (4K only when source has it), 1080p default when available
+- Motion: staggered rise-in (0.45s, signature ease), dock slide-up, spring counter, step-bar fills; safe-area + reduced-motion support
+- E2E verified: analyze → cut 2 clips → auto-advance → preview play (duration exact) → SRC 40:15 = 2415s exact → 1080p render 6,291,472 bytes byte-exact download → valid ZIP (14.1MB real) → selected-ZIP → history reopen → dark mode → mobile 390px → delete selected; user data preserved during tests
+- Production build verified: standalone server on :3100 — health, UI, analyze (WARP egress) all OK; tsc 0 errors, eslint 0 errors (1 pre-existing font warning)

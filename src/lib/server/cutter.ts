@@ -13,6 +13,12 @@ import { refreshFormats } from "./ytdlp";
  *   (input seek jumps to the keyframe before START, decodes & discards up to START exactly,
  *    -copyts keeps absolute timestamps so -to END lands precisely)
  *
+ * ORIGINAL AUDIO TRACK is preserved: when the source audio is AAC (m4a/mp4a —
+ * what YouTube serves) the audio stream is muxed over with `-c:a copy`, i.e.
+ * bit-for-bit the original track — no re-encode, no quality loss. Non-AAC
+ * sources (opus/webm) fall back to a high-quality AAC encode, and a failed
+ * copy auto-retries encoded.
+ *
  * Streams are fed through the local range-proxy so ffmpeg's HTTP client works
  * through the WARP tunnel and only fetches the bytes needed for the clip.
  */
@@ -75,6 +81,12 @@ export function pickAudioFormat(entry: FormatCacheEntry): StreamFormat | null {
     sorted[0] ||
     null
   );
+}
+
+/** True when the audio format can be stream-copied into mp4 (original track, no re-encode). */
+export function audioCopySafe(fmt?: StreamFormat | null): boolean {
+  if (!fmt) return false;
+  return fmt.ext === "m4a" || /mp4a|aac/i.test(fmt.acodec || "");
 }
 
 function ffmpeg(
@@ -179,7 +191,13 @@ function buildCutArgs(
   start: number,
   end: number,
   outPath: string,
-  opts: { targetHeight: number | null; srcHeight: number | null; crf: number; audioOnly?: boolean }
+  opts: {
+    targetHeight: number | null;
+    srcHeight: number | null;
+    crf: number;
+    audioOnly?: boolean;
+    audioCopy?: boolean; // true = mux original audio track bit-for-bit (-c:a copy)
+  }
 ): string[] {
   const args: string[] = ["-progress", "pipe:1", "-nostats"];
   // NOTE: never combine output `-t` with `-copyts` — with copyts, -t is applied on the
@@ -208,19 +226,29 @@ function buildCutArgs(
   if (opts.targetHeight && opts.srcHeight && opts.srcHeight > opts.targetHeight) {
     args.push("-vf", `scale=-2:${opts.targetHeight}`);
   }
-  args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000");
+  if (opts.audioCopy) {
+    // ORIGINAL AUDIO TRACK — stream copy, zero re-encode, zero quality loss.
+    args.push("-c:a", "copy");
+  } else {
+    args.push("-c:a", "aac", "-b:a", "192k", "-ar", "48000");
+  }
   args.push("-movflags", "+faststart");
   args.push(outPath);
   return args;
 }
 
-/** Cut a clip. Retries once with fresh stream URLs if they went stale (403). */
+/**
+ * Cut a clip. The ORIGINAL audio track is stream-copied when the source audio
+ * is AAC (YouTube's m4a) — bit-perfect, no re-encode. Retries with a fresh
+ * URLs if stream links went stale (403), and falls back to AAC re-encode if a
+ * raw copy turns out to be unmuxable.
+ */
 export async function cutClip(
   entry: FormatCacheEntry,
   opts: CutOptions,
   getFresh: () => Promise<FormatCacheEntry>
 ): Promise<void> {
-  const attempt = async (e: FormatCacheEntry) => {
+  const attempt = async (e: FormatCacheEntry, copyAudio: boolean) => {
     const { start, end, height } = opts;
     const video = pickVideoFormat(e, height ?? null);
     const audio = pickAudioFormat(e);
@@ -244,6 +272,7 @@ export async function cutClip(
         targetHeight: height ?? null,
         srcHeight: (combined && !video ? combined.height : video?.height) ?? null,
         crf: opts.crf ?? 18,
+        audioCopy: copyAudio,
       }
     );
 
@@ -259,13 +288,40 @@ export async function cutClip(
     }
   };
 
+  // original-audio decision: the stream actually feeding audio into the muxer
+  const planCopy = (e: FormatCacheEntry) => {
+    const video = pickVideoFormat(e, opts.height ?? null);
+    const audio = pickAudioFormat(e);
+    const combined = e.combined.find((f) => f.protocol === "https") ?? null;
+    if (video && audio) return audioCopySafe(audio); // separate audio stream
+    if (!video && combined) return audioCopySafe(combined); // muxed stream carries the audio
+    return false;
+  };
+
+  const stale = (m: string) => /403|401|expired|gone|empty|moved/i.test(m);
+
   try {
-    await attempt(entry);
+    await attempt(entry, planCopy(entry));
   } catch (err) {
     const msg = (err as Error).message || "";
-    if (/403|401|expired|gone|empty|moved/i.test(msg)) {
+    // audio copy unmuxable → retry the SAME entry with an AAC encode
+    if (planCopy(entry) && /audio|codec|mux|monotonic|invalid data|could not write|Operation not permitted/i.test(msg)) {
+      try {
+        await attempt(entry, false);
+        return;
+      } catch (err2) {
+        const m2 = (err2 as Error).message || "";
+        if (stale(m2)) {
+          await attempt(await getFresh(), false);
+        } else {
+          throw err2;
+        }
+        return;
+      }
+    }
+    if (stale(msg)) {
       const fresh = await getFresh(); // refreshFormats()
-      await attempt(fresh);
+      await attempt(fresh, planCopy(fresh));
     } else {
       throw err;
     }
@@ -281,6 +337,37 @@ export async function makePoster(previewPath: string, posterPath: string): Promi
     );
     return fs.existsSync(posterPath);
   } catch {
+    return false;
+  }
+}
+
+/**
+ * Shift the file's presentation timeline to start at zero (fast stream-copy
+ * remux). The frame-accurate cut uses -copyts, which keeps ORIGINAL absolute
+ * timestamps (clip 60s→90s stays 60→90 inside the file) — great for precision,
+ * but an embedded <video> would then start its clock at 60 with an empty lead,
+ * breaking scrub position and any timestamp UI. Normalizing to 0 keeps the
+ * embedded preview clock relative, so the UI can map it back to the source
+ * timeline exactly (srcTime = clip.start + currentTime). Best effort: on
+ * failure the original file is kept (still playable, just offset).
+ */
+export async function normalizeTs(file: string): Promise<boolean> {
+  const ext = path.extname(file);
+  const tmp = file + ".norm" + ext;
+  try {
+    await ffmpeg(
+      ["-y", "-i", file, "-c", "copy", "-avoid_negative_ts", "make_zero", "-movflags", "+faststart", tmp],
+      { totalSec: 1, timeoutMs: 180000 }
+    );
+    if (!fs.existsSync(tmp) || fs.statSync(tmp).size < 1024) throw new Error("empty normalize output");
+    fs.renameSync(tmp, file);
+    return true;
+  } catch {
+    try {
+      fs.rmSync(tmp, { force: true });
+    } catch {
+      /* ignore */
+    }
     return false;
   }
 }

@@ -14,8 +14,12 @@ Paste karo link → timestamps do → frame-accurate clips paao. Preview karo, q
 - **Per-clip preview** — har card me inline player (720p), custom scrub bar
 - **Quality select** — source ke hisaab se: 4K · 2160p / 2K · 1440p / 1080p / 720p / 480p / 360p / MP3
 - **Bulk download** — multiple clips select → ek ZIP
-- **Premium iOS-style UI** — dark, glass, spring animations (Framer Motion)
-- **Background jobs** — server-side queue (concurrency 2), browser band kar do, clips ban-te rehte hain; state disk pe persist hoti hai
+- **Opal Clipper UI** — clean premium design, light + dark theme, 3D press buttons, spring animations (Framer Motion + Lucide)
+- **Original audio** — clips me original audio track (AAC stream-copy, bit-perfect)
+- **Embedded preview** — real player with accurate SRC timestamps (original video timeline pe mapped) + REAL file sizes (disk se, estimate nahi)
+- **Manual downloads only** — auto-download kuch nahi karta: per-clip button, "Download All" ZIP, ya select → ZIP
+- **Temporary server** — server in-memory only (restart = clean slate); clip HISTORY sirf user ke browser me (localStorage) rehta hai
+- **Background jobs** — server-side queue (concurrency 2), browser band kar do, clips ban-te rehte hain
 
 ---
 
@@ -89,8 +93,8 @@ opal-clipper/
 ├── src/
 │   ├── app/                  # UI pages + API routes
 │   │   └── api/              # analyze · clips · clip/[id]/preview|poster · render/[id]/file · zip · health · state
-│   ├── components/clipper/   # OpalApp, HomeScreen, VideoScreen, QueueScreen, ClipsScreen,
-│   │                         # ClipCard, QualitySheet, TabBar, GemHero, BackgroundFX, …
+│   ├── components/clipper/   # OpalApp shell, HomeScreen, CutScreen, ProgressScreen, ClipsScreen,
+│   │                         # ClipCard (embedded preview player), HistoryPanel, ThemeToggle, toast
 │   └── lib/
 │       ├── clipper/          # zustand store, timestamp parser, types
 │       └── server/           # ytdlp wrapper · tunnel supervisor · cutter (ffmpeg) ·

@@ -1,12 +1,14 @@
 import path from "path";
 import { clipDir } from "./paths";
 import { getFormats, refreshFormats } from "./ytdlp";
-import { cutClip, makePoster, renderMp3, clipFilePath } from "./cutter";
+import { cutClip, makePoster, normalizeTs, renderMp3, clipFilePath } from "./cutter";
 import {
   getClip,
+  getStore,
   getVideo,
   updateClip,
   updateRender,
+  deleteClips,
   persist,
   type Clip,
   type RenderJob,
@@ -15,7 +17,15 @@ import {
 /**
  * Background job scheduler: processes clip cuts & quality renders with bounded
  * concurrency. Jobs keep running server-side regardless of what the UI does.
+ *
+ * TEMPORARY MEDIA: a TTL reaper sweeps every 10 minutes and deletes clips
+ * (and orphaned videos) older than CLIP_TTL_MS — nothing lives on the server
+ * for long. The user's history is kept in their browser, not here.
  */
+
+/** How long a clip and its rendered files live on the server. */
+const CLIP_TTL_MS = 6 * 60 * 60 * 1000; // 6 hours
+const REAPER_INTERVAL_MS = 10 * 60 * 1000; // sweep every 10 minutes
 
 interface QueueGlobal {
   __opalQueue?: {
@@ -27,6 +37,28 @@ interface QueueGlobal {
 
 const g = globalThis as unknown as QueueGlobal;
 if (!g.__opalQueue) g.__opalQueue = { queue: [], active: 0, maxConcurrent: 2 };
+
+/** TTL reaper — started once per process; keeps server media strictly temporary. */
+function ensureReaper() {
+  const rg = globalThis as unknown as { __opalReaperStarted?: boolean };
+  if (rg.__opalReaperStarted) return;
+  rg.__opalReaperStarted = true;
+  const sweep = () => {
+    try {
+      const cutoff = Date.now() - CLIP_TTL_MS;
+      const expired = getStore()
+        .clips.filter((c) => c.createdAt < cutoff)
+        .map((c) => c.id);
+      if (expired.length) deleteClips(expired); // also removes orphaned videos + files
+    } catch {
+      /* sweep is best-effort */
+    }
+  };
+  const t = setInterval(sweep, REAPER_INTERVAL_MS);
+  if (typeof t === "object" && t && "unref" in t) t.unref();
+  setTimeout(sweep, 90_000); // first sweep shortly after boot
+}
+ensureReaper();
 
 function enqueue(task: () => Promise<void>) {
   const q = g.__opalQueue!;
@@ -87,6 +119,9 @@ export function enqueueClipCut(clip: Clip) {
       }, getFresh);
 
       updateClip(clip.id, { stage: "Finishing", progress: 98, hasPreview: true });
+      // zero-base the timeline so the embedded preview clocks relative time
+      // (UI maps it back to the source timeline for accurate SRC timestamps)
+      await normalizeTs(previewPath);
       const posterOk = await makePoster(previewPath, posterPath);
       updateClip(clip.id, {
         status: "ready",
@@ -138,6 +173,8 @@ export function enqueueRender(render: RenderJob) {
         await renderMp3(entry, opts, getFresh);
       } else {
         await cutClip(entry, { ...opts, height }, getFresh);
+        // zero-base the timeline of the downloadable file too (same reason as preview)
+        await normalizeTs(outPath);
       }
 
       updateRender(render.id, { status: "ready", progress: 100 });

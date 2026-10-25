@@ -1,11 +1,15 @@
 import fs from "fs";
 import path from "path";
-import { CLIPS_DIR, STATE_FILE, STORAGE_DIR, VIDEOS_DIR, clipDir, videoDir } from "./paths";
+import { CLIPS_DIR, VIDEOS_DIR, clipDir, videoDir } from "./paths";
 
 /**
- * Persistent app state (videos, clips, render jobs).
- * Survives dev-server hot reloads & restarts: written through to state.json,
- * in-flight jobs are recovered (marked ready if their files exist).
+ * TEMPORARY app state (videos, clips, render jobs).
+ *
+ * Nothing is persisted to disk — the server keeps state in memory for the
+ * lifetime of the process only. On every fresh boot the clips/ and videos/
+ * storage directories are wiped, so rendered media is strictly ephemeral.
+ * The user's clip HISTORY lives exclusively in their browser (localStorage),
+ * hydrated client-side — the server never remembers anything between runs.
  */
 
 export interface VideoInfo {
@@ -60,7 +64,6 @@ interface StoreGlobal {
   __opalStore?: {
     state: AppState;
     loaded: boolean;
-    saveTimer?: NodeJS.Timeout;
   };
 }
 
@@ -68,6 +71,21 @@ const g = globalThis as unknown as StoreGlobal;
 
 function emptyState(): AppState {
   return { videos: [], clips: [], renders: [] };
+}
+
+/** Boot-time wipe: media on this server is TEMPORARY — a fresh process starts clean. */
+function wipeStorageForFreshBoot() {
+  for (const dir of [CLIPS_DIR, VIDEOS_DIR]) {
+    try {
+      if (fs.existsSync(dir)) {
+        for (const entry of fs.readdirSync(dir)) {
+          fs.rmSync(path.join(dir, entry), { recursive: true, force: true });
+        }
+      }
+    } catch {
+      /* best effort */
+    }
+  }
 }
 
 export function getStore(): AppState {
@@ -83,14 +101,9 @@ function ensureStore() {
   if (!s.loaded) {
     s.loaded = true;
     try {
-      fs.mkdirSync(STORAGE_DIR, { recursive: true });
-      fs.mkdirSync(VIDEOS_DIR, { recursive: true });
       fs.mkdirSync(CLIPS_DIR, { recursive: true });
-      if (fs.existsSync(STATE_FILE)) {
-        const raw = JSON.parse(fs.readFileSync(STATE_FILE, "utf-8")) as AppState;
-        s.state = { ...emptyState(), ...raw };
-      }
-      recoverInterrupted(s.state);
+      fs.mkdirSync(VIDEOS_DIR, { recursive: true });
+      wipeStorageForFreshBoot(); // temporary server: fresh boot = clean slate
     } catch {
       s.state = emptyState();
     }
@@ -98,64 +111,9 @@ function ensureStore() {
   return s;
 }
 
-/** Mark in-flight jobs from a previous process; keep files that already exist. */
-function recoverInterrupted(state: AppState) {
-  for (const clip of state.clips) {
-    const dir = clipDir(clip.id);
-    clip.hasPreview = fs.existsSync(path.join(dir, "preview.mp4"));
-    clip.hasPoster = fs.existsSync(path.join(dir, "poster.jpg"));
-    // recompute rendered qualities from disk
-    clip.renderedQualities = [];
-    try {
-      for (const f of fs.readdirSync(dir)) {
-        const m = f.match(/^q_(.+)\.(mp4|mp3)$/);
-        if (m) clip.renderedQualities.push(m[1]);
-      }
-    } catch {
-      /* dir missing */
-    }
-    if (clip.status === "queued" || clip.status === "cutting") {
-      if (clip.hasPreview) {
-        clip.status = "ready";
-        clip.progress = 100;
-        clip.stage = "Ready";
-      } else {
-        clip.status = "error";
-        clip.error = "Interrupted. Please retry.";
-        clip.stage = "Error";
-      }
-    }
-  }
-  for (const r of state.renders) {
-    const clip = state.clips.find((c) => c.id === r.clipId);
-    const fileOk =
-      clip &&
-      fs.existsSync(path.join(clipDir(clip.id), `q_${r.quality}.${r.quality === "mp3" ? "mp3" : "mp4"}`));
-    if (r.status === "queued" || r.status === "rendering") {
-      if (fileOk) {
-        r.status = "ready";
-        r.progress = 100;
-      } else {
-        r.status = "error";
-        r.error = "Interrupted. Please retry.";
-      }
-    }
-  }
-  state.renders = state.renders.filter((r) => state.clips.some((c) => c.id === r.clipId));
-}
-
+/** No-op — state is deliberately TEMPORARY (in-memory only, never written to disk). */
 export function persist() {
-  const s = ensureStore();
-  if (s.saveTimer) clearTimeout(s.saveTimer);
-  s.saveTimer = setTimeout(() => {
-    try {
-      const tmp = STATE_FILE + ".tmp";
-      fs.writeFileSync(tmp, JSON.stringify(s.state));
-      fs.renameSync(tmp, STATE_FILE);
-    } catch (e) {
-      console.error("[store] persist failed", e);
-    }
-  }, 250);
+  /* intentionally empty: nothing persists server-side */
 }
 
 export function upsertVideo(video: VideoInfo) {

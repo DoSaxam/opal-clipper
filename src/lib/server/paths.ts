@@ -39,11 +39,11 @@ export const MEDIA_PROXY_PORT = 9898; // local range-proxy for ffmpeg
 export const SOCKS_PROXY = `socks5://127.0.0.1:${SOCKS_PORT}`;
 export const HTTP_PROXY = `http://127.0.0.1:${GOST_PORT}`;
 
-// Storage
+// Storage — strictly TEMPORARY (wiped on boot, clips expire via TTL reaper).
+// Nothing here is persistent state: history lives in the user's browser only.
 export const STORAGE_DIR = path.join(ROOT, "storage");
 export const VIDEOS_DIR = path.join(STORAGE_DIR, "videos");
 export const CLIPS_DIR = path.join(STORAGE_DIR, "clips");
-export const STATE_FILE = path.join(STORAGE_DIR, "state.json");
 
 // yt-dlp binary — prefer the self-contained copy in scripts/ (survives container
 // restarts); fall back to PATH only if it's missing.
