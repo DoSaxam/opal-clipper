@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useSyncExternalStore } from "react";
 import { Moon, Sun } from "lucide-react";
 
 type Theme = "light" | "dark";
@@ -22,6 +22,16 @@ function getServerSnapshot(): Theme {
   return "light";
 }
 
+function currentTheme(): Theme {
+  try {
+    const saved = localStorage.getItem("opal-theme");
+    if (saved === "light" || saved === "dark") return saved;
+  } catch {
+    /* ignore */
+  }
+  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+}
+
 function setThemeClass(t: Theme) {
   const el = document.documentElement;
   el.setAttribute("data-theme", t);
@@ -36,6 +46,16 @@ function setThemeClass(t: Theme) {
 
 export function ThemeToggle() {
   const theme = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
+
+  // Dev-only recovery: Turbopack Fast Refresh remounts can clobber the
+  // <html> attributes set by the pre-paint script. This syncs the external
+  // system (DOM + localStorage) back — no React state involved.
+  useEffect(() => {
+    const cur = document.documentElement.getAttribute("data-theme");
+    if (cur !== "light" && cur !== "dark") {
+      setThemeClass(currentTheme());
+    }
+  }, []);
 
   const toggle = useCallback(() => {
     setThemeClass(theme === "dark" ? "light" : "dark");
