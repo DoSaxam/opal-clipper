@@ -75,7 +75,36 @@ function cutTimeoutMs(durSec: number, workHeight: number): number {
 
 export function pickAudioFormat(entry: FormatCacheEntry): StreamFormat | null {
   const pool = entry.audio.filter((f) => f.protocol === "https");
-  const sorted = [...pool].sort((a, b) => (b.abr || 0) - (a.abr || 0));
+  if (!pool.length) return null;
+
+  // Multi-language videos (YouTube auto-dubs / MrBeast-style multi-audio):
+  // the video's ORIGINAL language track is the only acceptable one — a higher
+  // -bitrate dub must NEVER win. Order of preference:
+  //   1. tracks labelled with the video's original language
+  //   2. unlabelled tracks (single-track sources; some sites leave the
+  //      original unlabelled while dubs always carry a language)
+  //   3. everything (last resort — original language simply not identifiable)
+  const norm = (l?: string | null) => (l || "").trim().toLowerCase().split(/[-_]/)[0] || "";
+  const marked = pool.filter((f) => !!norm(f.language));
+  if (marked.length) {
+    const original = norm(entry.originalLang);
+    let candidates = original ? marked.filter((f) => norm(f.language) === original) : [];
+    if (!candidates.length) {
+      const unmarked = pool.filter((f) => !norm(f.language));
+      if (unmarked.length) candidates = unmarked;
+    }
+    if (!candidates.length) {
+      const unmarked = pool.filter((f) => !norm(f.language));
+      candidates = unmarked.length ? unmarked : pool;
+    }
+    return bestAudio(candidates);
+  }
+  return bestAudio(pool);
+}
+
+/** Best audio within ONE language: highest abr, m4a/AAC preferred (copy-safe). */
+function bestAudio(cands: StreamFormat[]): StreamFormat | null {
+  const sorted = [...cands].sort((a, b) => (b.abr || 0) - (a.abr || 0));
   return (
     sorted.find((f) => f.ext === "m4a" || /mp4a/i.test(f.acodec)) ||
     sorted[0] ||
@@ -114,7 +143,9 @@ function audioCodecLabel(fmt?: StreamFormat | null): string {
             ? c.split(".")[0].toUpperCase()
             : "AUDIO";
   const abr = fmt.abr ? ` ${Math.round(fmt.abr)}k` : "";
-  return `${codec}${abr}`;
+  // language code when known ("en" → "EN") — makes the picked track visible
+  const lang = fmt.language ? ` · ${fmt.language.split(/[-_]/)[0].toUpperCase()}` : "";
+  return `${codec}${abr}${lang}`;
 }
 
 function ffmpeg(

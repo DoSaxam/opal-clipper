@@ -25,12 +25,19 @@ export interface StreamFormat {
   url: string;
   protocol: string; // "https" (direct file w/ ranges) | "m3u8_native" | ...
   filesize: number | null;
+  /** ISO language of THIS track (e.g. "en", "bn", "en-GB") — null when the
+   *  source has a single audio track (or the track is unlabelled). */
+  language: string | null;
 }
 
 export interface FormatCacheEntry {
   video: StreamFormat[];
   audio: StreamFormat[];
   combined: StreamFormat[];
+  /** The video's ORIGINAL language (from the source metadata, e.g. "en").
+   *  Used to pick the original audio track on multi-language videos and
+   *  never accidentally grab a dub (Bangla/Hindi/…). */
+  originalLang: string | null;
   viaTunnel: boolean;
   fetchedAt: number;
 }
@@ -81,6 +88,7 @@ interface RawFormat {
   filesize?: number | null;
   filesize_approx?: number | null;
   format_note?: string;
+  language?: string | null;
 }
 
 interface RawInfo {
@@ -92,11 +100,17 @@ interface RawInfo {
   duration?: number | null;
   thumbnail?: string;
   extractor_key?: string;
+  language?: string | null;
   formats?: RawFormat[];
   url?: string;
   is_live?: boolean;
   live_status?: string;
   ext?: string;
+}
+
+/** Primary language subtag, lowercase ("en-GB" → "en"). "" when unknown. */
+function normLang(l?: string | null): string {
+  return (l || "").trim().toLowerCase().split(/[-_]/)[0] || "";
 }
 
 function parseFormats(raw: RawInfo): FormatCacheEntry {
@@ -119,6 +133,7 @@ function parseFormats(raw: RawInfo): FormatCacheEntry {
       url: f.url,
       protocol,
       filesize: f.filesize ?? f.filesize_approx ?? null,
+      language: f.language ?? null,
     };
     const isStoryboard = (f.format_note || "").includes("storyboard") || f.ext === "mhtml";
     if (isStoryboard) continue;
@@ -139,9 +154,18 @@ function parseFormats(raw: RawInfo): FormatCacheEntry {
       url: raw.url,
       protocol: "https",
       filesize: null,
+      language: null,
     });
   }
-  return { video, audio, combined, viaTunnel: false, fetchedAt: Date.now() };
+  return {
+    video,
+    audio,
+    combined,
+    // the video's ORIGINAL language — dubs never substitute for it
+    originalLang: normLang(raw.language) || null,
+    viaTunnel: false,
+    fetchedAt: Date.now(),
+  };
 }
 
 function stableVideoId(extractor: string, id: string) {
